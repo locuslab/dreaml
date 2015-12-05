@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}CILO: Plots{% endblock %}
+
+{% block styles -%}
+    {{super()}}  {# do not forget to call super or Bootstrap's own stylesheets
+                    will disappear! #}
+    <!-- <link rel="stylesheet" type="text/css" href="{{url_for('static',    filename='bokeh/css/bokeh.css')}}"> -->
+{% endblock %}
+
+{% block content %}
+<div class="container">
+<div class="row">
+    <h1 class="col-lg-12">Real Time Plots</h1>
+</div>
+{% for script in scripts %}
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="bs-component">
+                {{script}}
+            </div>
+        </div>
+    </div>
+{% endfor %}
+</div>
+        <!-- <div class="plotdiv" id="ed844415-94b8-45bb-97ce-c69d8137abb8"></div> -->
+{% endblock %}
+
+
+{% block scripts %}
+{{super()}}
+<!-- <script src="{{url_for('static', filename='bokeh/js/bokeh.js')}}"></script> -->
+<link rel="stylesheet" href="http://cdn.pydata.org/bokeh/release/bokeh-0.10.0.min.css" type="text/css" />
+        
+<script type="text/javascript" src="http://cdn.pydata.org/bokeh/release/bokeh-0.10.0.min.js"></script>
+<script type="text/javascript">
+    Bokeh.set_log_level("info");
+</script>
+<script src="{{url_for('static', filename='plots.js')}}"></script>
+
+{% endblock %}

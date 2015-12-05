@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}CILO: Grid{% endblock %}
+
+{% block styles -%}
+    {{super()}}  {# do not forget to call super or Bootstrap's own stylesheets
+                    will disappear! #}
+    <link rel="stylesheet" type="text/css"
+          href="{{url_for('static', filename='grid.css')}}">
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="bs-component">
+            <div class="jumbotron container">
+                <h1 class="col-lg-12">Dataframe Grid</h1>
+                <div class="col-lg-12" id="grid"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{super()}}
+<script src="{{url_for('static', filename='d3.min.js')}}"
+charset="utf-8"></script>
+<script src="{{url_for('static', filename='grid.js')}}"></script>
+{% endblock %}

@@ -1,0 +1,76 @@
+{
+  "rows":
+  [
+    {
+      "directory": true,
+      "query":"data/",
+      "files":
+      [
+        {"directory": false, "query": "0"},
+        {"directory": false, "query": "1"}, 
+        {"directory": false, "query": "2"}, 
+        {"directory": false, "query": "3"},
+        {"directory": false, "query": "4"}
+      ]
+    }
+  ],
+  "cols":
+  [
+    {
+      "directory": true,
+      "query":"input/",
+      "files": 
+      [
+      {"directory": false, "query": "0"}
+      ]
+    }
+  ],
+
+  "row_index":
+  {
+    "data/train/0" : 0,
+    "data/train/1" : 0,
+    "data/train/2" : 0,
+    "data/train/3" : 0,
+    "data/train/4" : 0,
+    "data/test/0" : 1,
+    "data/test/1" : 1,
+    "data/test/2" : 1
+  },
+  "col_index":
+  {
+    "input/raw/0" : 0,
+    "input/raw/1" : 0,
+    "input/raw/2" : 0,
+    "input/raw/3" : 0,
+    "input/raw/4" : 1,
+    "input/raw/5" : 1,
+    "input/raw/6" : 1,
+    "input/label/0" : 2
+  },
+  "partitions":
+  {
+    "(0,0)":0,
+    "(0,1)":1,
+    "(0,2)":2,
+    "(1,0)":3,
+    "(1,1)":4,
+    "(1,2)":5
+  },
+
+  "nodes":  
+  [
+    { "query": "asdf",             "group":  1 }, 
+    { "query": "analytics",           "group":  2 },   
+    { "query": "cluster",       "group":  4 },
+    { "query": "graph",       "group":  2 }
+    
+  ],
+
+  "links":  
+  [
+    { "source":  0,  "target":  1,  "value":  1 },
+    { "source":  1,  "target":  2,  "value": 10 },
+    { "source":  1,  "target":  3,  "value":  6 }
+  ]
+}

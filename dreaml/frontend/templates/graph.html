@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}CILO: Graph{% endblock %}
+
+{% block styles -%}
+    {{super()}}  {# do not forget to call super or Bootstrap's own stylesheets
+                    will disappear! #}
+    <link rel="stylesheet" type="text/css"
+          href="{{url_for('static', filename='graph.css')}}">
+{% endblock %}
+
+{% block content %}
+    <div class="container">
+        <div class="row">
+            <div class="bs-component">
+                <div class="jumbotron container">
+                    <h1 class="col-lg-12">Computational Graph</h1>
+                    <div class="form-group">
+                    <label for="layout">Layout:</label>
+                    <select class="form-control" id="layout">
+                        <option value="random">Random</option>
+                        <option value="grid">Grid</option>
+                        <option value="circle">Circle</option>
+                        <option value="breadthfirst">Breadth First</option>
+                        <option value="breadthfirstdirected" selected>Breadth First
+                        (directed)</option>
+                        <!-- <option value="cose">Cose</option> -->
+                    </select>
+                    </div>
+                    <div class="col-lg-12" id="cy"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+<!-- <div id="canvas" style="height: 400px; width: 600px;"></div>
+<button id="redraw" onclick="redraw();">redraw</button>
+<button id="hide_penguin" onclick="hide('penguin');">hide penguin (beta)</button>
+<button id="hide_penguin" onclick="show('penguin');">show penguin (beta)</button> -->
+{% endblock %}
+
+{% block scripts %}
+{{super()}}
+<!-- <script src="{{url_for('static', filename='dracula/raphael.js')}}"></script>
+<script src="{{url_for('static', filename='dracula/dracula_graffle.js')}}"></script>
+<script src="{{url_for('static', filename='dracula/dracula_graph.js')}}"></script>
+<script src="{{url_for('static', filename='dracula/dracula_algorithms.js')}}"></script> -->
+<script src="{{url_for('static', filename='cytoscape/cytoscape.js')}}"></script>
+<script src="{{url_for('static',filename='graph.js')}}"></script>
+{% endblock %}

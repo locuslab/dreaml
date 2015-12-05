@@ -1,0 +1,86 @@
+{
+  "rows":
+  [
+    {
+      "directory": true,
+      "query":"data/",
+      "files":
+      [
+        {
+          "directory": true,
+          "query":"train/",
+          "files": [{"directory": false, "query": "0"},
+                    {"directory": false, "query": "1"}, 
+                    {"directory": false, "query": "2"}, 
+                    {"directory": false, "query": "3"},
+                    {"directory": false, "query": "4"}]
+        },
+        {
+          "directory": true,
+          "query":"test/",
+          "files": [{"directory": false, "query": "0"},
+                    {"directory": false, "query": "1"}, 
+                    {"directory": false, "query": "2"}]
+        }
+      ]
+    }
+  ],
+  "cols":
+  [
+    {
+      "directory": true,
+      "query":"input/",
+      "files": 
+      [
+        {
+          "directory": true,
+          "query":"raw/",
+          "files" : [{"directory": false, "query": "0"},
+                    {"directory": false, "query": "1"}, 
+                    {"directory": false, "query": "2"}, 
+                    {"directory": false, "query": "3"},
+                    {"directory": false, "query": "4"},
+                    {"directory": false, "query": "5"},
+                    {"directory": false, "query": "6"}]
+        },
+        {
+          "directory": true,
+          "query":"label/",
+          "files" : [{"directory": false, "query": "0"}]
+        }
+      ]
+    }
+  ],
+
+  "row_index":
+  {
+    "data/train/0" : 0,
+    "data/train/1" : 0,
+    "data/train/2" : 0,
+    "data/train/3" : 0,
+    "data/train/4" : 0,
+    "data/test/0" : 1,
+    "data/test/1" : 1,
+    "data/test/2" : 1
+  },
+  "col_index":
+  {
+    "input/raw/0" : 0,
+    "input/raw/1" : 0,
+    "input/raw/2" : 0,
+    "input/raw/3" : 0,
+    "input/raw/4" : 1,
+    "input/raw/5" : 1,
+    "input/raw/6" : 1,
+    "input/label/0" : 2
+  },
+  "partitions":
+  {
+    "(0, 0)":0,
+    "(0, 1)":1,
+    "(0, 2)":2,
+    "(1, 0)":3,
+    "(1, 1)":4,
+    "(1, 2)":5
+  }
+}
