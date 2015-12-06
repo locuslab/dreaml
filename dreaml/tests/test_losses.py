@@ -1,6 +1,6 @@
-from cilo.dataframe.dataframe import DataFrame
-import cilo
-import cilo.loss as loss
+from dreaml.dataframe.dataframe import DataFrame
+import dreaml
+from dreaml.loss import *
 import numpy as np
 import numpy.random as nprand
 
@@ -21,8 +21,8 @@ class TestLoss:
                     upper[i,j] += epsilon
                     lower = x.copy()
                     lower[i,j] -= epsilon
-                    g[i,j] = ((f(DataFrame.from_matrix(upper))[0]
-                             -f(DataFrame.from_matrix(lower))[0])
+                    g[i,j] = ((f(DataFrame.from_matrix(upper))
+                             -f(DataFrame.from_matrix(lower)))
                              /(2*epsilon))
         elif x.ndim == 1:
             for i in range(x.shape[0]):
@@ -31,8 +31,8 @@ class TestLoss:
                 lower = x.copy()
                 lower[i] -= epsilon
 
-                g[i] = ((f(DataFrame.from_matrix(upper))[0]
-                       -f(DataFrame.from_matrix(lower))[0])
+                g[i] = ((f(DataFrame.from_matrix(upper))
+                       -f(DataFrame.from_matrix(lower)))
                        /(2*epsilon))
         else:
             raise ValueError
@@ -48,11 +48,13 @@ class TestLoss:
         theta = nprand.rand(10,1)
         df[y_path] = DataFrame.from_matrix(y)
         df[theta_path] = DataFrame.from_matrix(theta)
+        # df[X_path] = DataFrame.from_matrix(nprand.rand(10,2))
 
-        toy = lambda theta_df: loss.toy(theta_df,None,df[y_path])
+        toy = lambda theta_df: Toy.f(theta_df,None,y_df=df[y_path])
 
         g0 = self.central_diff(toy,epsilon,df[theta_path])
-        g = toy(df[theta_path])[1]
+        g = Toy.g(df[theta_path],None,y_df=df[y_path])
+
         assert(np.allclose(g,g0))
 
     def test_softmax_reg_loss(self):
@@ -69,16 +71,16 @@ class TestLoss:
         df[y_path] = DataFrame.from_matrix(nprand.randint(k,size=(n,1)))
         reg = 0.01
 
-        softmax = lambda theta_df: loss.softmax(theta_df, df[X_path], 
+        softmax = lambda theta_df: Softmax.f(theta_df, df[X_path], 
                                                 df[y_path], reg)
 
         g_central = self.central_diff(softmax,epsilon,df[theta_path])
-        g1 = softmax(df[theta_path])[1]
+        g1 = Softmax.g(df[theta_path], df[X_path], df[y_path], reg)
         assert(np.allclose(g_central,g1))
 
         # Test batch by checking average gradient
         g2 = np.zeros((k,m))
         for i in range(n):
-            g2 += softmax(df[theta_path])[1]
+            g2 += Softmax.g(df[theta_path], df[X_path], df[y_path], reg)
         g2 /= n
         assert(np.allclose(g_central,g2))

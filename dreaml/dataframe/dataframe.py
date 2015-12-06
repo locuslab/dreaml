@@ -319,6 +319,12 @@ class DataFrame(object):
         else:
             return None
 
+    def rows(self):
+        return self._row_index.keys()
+
+    def cols(self):
+        return self._col_index.keys()
+
     @staticmethod
     def _add_index_to_json_array(arr,path):
         """ Add a path to an array of hierarchical indices """

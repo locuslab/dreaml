@@ -98,8 +98,7 @@ class KitchenSinks(BatchTransform):
         J = (I + deltI) % X.shape[0]
         dists = sorted(map(lambda i : la.norm(X[I[i],:] - X[J[i],:]), range(n_trials)))
         s = dists[n_trials / 2]
-        # hack to convert to python float instead of numpy float which
-        # fails the type check
+        
         self.s = float(s)
 
     def func(self,target_df,X_df,n_rbf):
@@ -113,20 +112,22 @@ class KitchenSinks(BatchTransform):
 
 class GD(ContinuousTransform):
     def __init__(self,*args,**kwargs):
+        print args,kwargs
         super(GD,self).__init__(*args,**kwargs)
         self.niters = 0
 
-    def continuous_func(self,target_df,f,x0,*args,**kwargs):
+    def continuous_func(self,target_df,Obj,x0,*args,**kwargs):
         self.niters += 1
-
-        res = f(target_df,*args,**kwargs)
+        res = Obj.g(target_df,*args,**kwargs)
 
         P = target_df.get_matrix()
 
-        P -= 0.1*res[1]
+        P -= 0.1*res
 
-    def init_func(self,target_df,f,x0,*args,**kwargs):
-        rows,cols = f(None,*args,**kwargs)
+    def init_func(self,target_df,Obj,x0,*args,**kwargs):
+        print args
+        print kwargs
+        rows,cols = Obj.structure(*args,**kwargs)
         target_df.set_structure(rows,cols)
         if x0.shape == target_df.shape():
             target_df.set_matrix(x0)
@@ -136,60 +137,58 @@ class SGD(ContinuousTransform):
     point ``x0``. By default, it will run with a minibatch size of 1, unless
     keyword argument ``batch_size`` is provided. 
 
-    The function ``f`` will take as input the target dataframe partition,
-    ``*args``, and ``**kwargs``, with the exception of the keyword
-    argument``batch_size``. ``f`` should return a pair of values, the second of
-    which is the gradient.
-    """
-    def __init__(self,f,x0,*args,**kwargs):
-        self.batch_size = kwargs.pop('batch_size',1)
+    The function ``f`` should follow the specification of a loss function. 
 
-        super(SGD,self).__init__(f,x0,*args,**kwargs)
+    Special keyword arguments:
+    ==========  =======  
+    kwarg       default    
+    ==========  =======  
+    step_size   1e-4
+    batch_size  1 
+    ==========  =======  
+
+    """
+    def __init__(self,Obj,x0,*args,**kwargs):
+        self.batch_size = kwargs.pop('batch_size',1)
+        self.step_size = kwargs.pop('step_size',1e-4)
+
+        super(SGD,self).__init__(Obj,x0,*args,**kwargs)
         self.niters = 0
         self.batch = 0
 
-    def init_func(self, target_df,f,x0,*args,**kwargs):
+    def init_func(self, target_df,Obj,x0,*args,**kwargs):
 
         if len(args)==0:
             raise ValueError("Mini-batchable arguments must be provided. If\
                 none are necessary, consider using the gradient descent (GD)\
                 transformation instead.")
-
-        rows,cols = f(None,*args,**kwargs)
+        print args,kwargs
+        rows,cols = Obj.structure(*args,**kwargs)
         target_df.set_structure(rows,cols)
         if x0.shape == target_df.shape():
             target_df.set_matrix(x0)
 
-
-    # def continuous_func(self, target_df, f_opt, *args, **kwargs):
-    # Note: we need to pass X,y explicity if we are to mini-batch them. 
-    def continuous_func(self, target_df,f,x0,*args,**kwargs):
-        # t = time()
-        # This should become a argument in the function
-        step_size = 1e-4
+    def continuous_func(self, target_df,Obj,x0,*args,**kwargs):
         n = args[0].shape()[0]
 
         start = self.batch
         end = min(start+self.batch_size,n)
-        g = f(target_df,*[df[start:end,:] for df in args],**kwargs)[1]
-        # print "shape comparison"
-        # print params_df.shape()
+        g = Obj.g(target_df,*[df[start:end,:] if isinstance(df,DataFrame)
+            else df for df in args],**kwargs)
+
         Theta = target_df.get_matrix()
 
         self.niters +=1
         self.batch += self.batch_size
         if self.batch >= n:
             self.batch = 0
-        Theta -= step_size*g
+        Theta -= self.step_size*g
 
 class PCABasis(BatchTransform):
     def func(self,target_df,X_df, num_bases=50):
         X = X_df.get_matrix()
         X_m = np.mean(X,axis=0) # mean
         X_zm = X - X_m # X with 0 mean
-        # X_cov = X_zm.T.dot(X_zm) # X covariance
-        # eigval, eigvec = la.eig(X_cov)
-        # eigvec = eigvec[:,:num_bases] # Choose top dimensions
         u,s,v_T = la.svd(X_zm)
 
         row_labels = [str(i) for i in range(X.shape[1])]
@@ -204,8 +203,6 @@ class PCA(BatchTransform):
         pca_basis_location = (_auto_dir+"features/",_auto_dir+"pca_basis/")
         df[pca_basis_location] = PCABasis(X_df,num_bases)
         target_df.set_dataframe(Dot(X_df, df[pca_basis_location]))
-        # target_df.set_dataframe(dot(X_df, df[pca_basis_location],
-            # subroutine=False))
 
 def __softmax_error_function__(target_df,params_df,X_df,y_df):
     n = X_df.shape()[0]

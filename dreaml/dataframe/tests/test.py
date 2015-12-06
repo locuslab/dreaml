@@ -1,4 +1,4 @@
-from cilo.dataframe.index import Index
+from dreaml.dataframe.index import Index
 
 class TestIndex:
     def setUp(self):

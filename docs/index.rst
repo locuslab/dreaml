@@ -10,6 +10,7 @@ Contents:
    server 
    transformations
    plotter
+   loss
 
 
 Indices and tables
