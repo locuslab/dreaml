@@ -11,6 +11,13 @@ import numpy as np
 
 
 class Plotter(ContinuousTransform):
+    """Calculates ``f(**kwargs)`` at regular intervals and pushes the resulting
+    plot to the web frontend. f must return ``(ys,xs)`` where  ``ys`` is the
+    is a list of outputs, each of which is plotted with the corresponding
+    ``xs`` entry on the same plot. """
+
+    def __init__(self,f,title,legend,interval=1,**kwargs):
+        super(Plotter,self).__init__(f,title,legend,interval=1,**kwargs)
 
     def init_func(self,target_df,f,title,legend,interval=1,**kwargs):
         self.connect_to_server()
