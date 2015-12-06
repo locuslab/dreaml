@@ -4,6 +4,7 @@ import dreaml.loss as loss
 import numpy as np
 import numpy.random as nprand
 from time import sleep
+from dreaml.transformations import *
 
 class TestTransformation:
     def setUp(self):
@@ -19,7 +20,7 @@ class TestTransformation:
         M2 = nprand.rand(5,8)
         df[M1_path] = DataFrame.from_matrix(M1)
         df[M2_path].set_matrix(M2)
-        df[dot_path1] = dreaml.Dot(df[M1_path],df[M2_path])
+        df[dot_path1] = Dot(df[M1_path],df[M2_path])
         assert (df[dot_path1].get_matrix()==M1.dot(M2)).all()
 
     def test_linear(self):
@@ -33,7 +34,7 @@ class TestTransformation:
         df[M2_path].set_matrix(M2)
         a = 2
         b = -3
-        df[linear_path1] = dreaml.Linear(a,df[M1_path],b,df[M2_path])
+        df[linear_path1] = Linear(a,df[M1_path],b,df[M2_path])
         assert (df[linear_path1].get_matrix()==a*M1+b*M2).all()
 
     def test_permutation(self):
@@ -42,7 +43,7 @@ class TestTransformation:
         permute_path1 = ("row2/","col1/")
         M1 = nprand.rand(3,5)
         df[M1_path] = DataFrame.from_matrix(M1)
-        df[permute_path1] = dreaml.Permute(df[M1_path])
+        df[permute_path1] = Permute(df[M1_path])
         p_df = df["auto/row1/","auto/permutation/"]
         p = p_df.get_matrix().ravel()
         assert (df[permute_path1].get_matrix()==M1[p,:]).all()
@@ -59,7 +60,7 @@ class TestTransformation:
 
         M2 = np.zeros((3,5))
         
-        df[M2_path] = dreaml.GD(loss.Toy,M2,None,y_df=df[M1_path])
+        df[M2_path] = GD(loss.Toy,M2,None,y_df=df[M1_path])
         sleep(1)
         # df[M2_path].stop()
         assert np.allclose(df[M2_path].get_matrix(),df[M1_path].get_matrix())
@@ -98,43 +99,10 @@ class TestTransformation:
         df["yrow/","ycol/"] = DataFrame.from_matrix(np.arange(8).reshape(8,1))
         X_df = df["xrow/","xcol/"]
         y_df = df["yrow/","ycol/"]
-        df[path] = dreaml.SGD(loss.Toy,close,X_df,y_df=y_df,batch_size=8,step_size=0.5)
+        df[path] = SGD(loss.Toy,close,X_df,y_df=y_df,batch_size=8,step_size=0.5)
         sleep(1)
         df[path].stop()
-        print df[path].get_matrix()
-        print y_df.get_matrix()
         assert np.allclose(df[path].get_matrix(), y_df.get_matrix())
-    # def test_sgd(self):
-    #     # Also test sgd
-    #     close = np.array([[-44.25076083,  38.62854577],
-    #                       [-38.41473092,  36.29945225],
-    #                       [-31.43300105,  30.79620632],
-    #                       [-21.27706071,  24.08638079],
-    #                       [-14.00259076,   6.54438641],
-    #                       [ 11.52354442,  -6.07783327],
-    #                       [ 48.69374796, -38.64696136],
-    #                       [ 95.49682071, -84.38906967]])
-
-    #     df = DataFrame()
-    #     path = "row/","col/"
-    #     df["xrow/","xcol/"]= DataFrame.from_matrix(np.arange(16).reshape(8,2))
-    #     df["yrow/","ycol/"] = DataFrame.from_matrix(np.arange(8).reshape(8,1))
-    #     df["initrow/","initcol/"] = DataFrame.from_matrix(close)
-    #     X_df = df["xrow/","xcol/"]
-    #     y_df = df["yrow/","ycol/"]
-    #     x0_df = df["initrow/","initcol/"]
-    #     df[path] = dreaml.SGD(loss.softmax,x0_df,8,X_df,y_df,reg=1e-4)
-    #     sleep(1)
-    #     df[path].stop()
-
-    #     path2 = "row2/","col2/"
-    #     df[path2] = dreaml.GD(loss.softmax,x0_df,X_df,y_df,reg=1e-4)
-    #     sleep(1)
-    #     df[path2].stop()
-
-        # assert np.allclose(df[path].get_matrix(),df[path2].get_matrix())
-
-
 
 
     def test_zero_mean(self):
@@ -144,7 +112,7 @@ class TestTransformation:
         M1 = nprand.rand(3,5)
         M1_zm = M1-np.mean(M1,axis=0)
         df[M1_path].set_matrix(M1)
-        df[M2_path] = dreaml.ZeroMean(df[M1_path])
+        df[M2_path] = ZeroMean(df[M1_path])
         assert(df[M2_path].get_matrix()==M1_zm).all()
 
     def test_one_hot_encoding(self):
@@ -159,7 +127,7 @@ class TestTransformation:
             M2[i,M1[i]] = 1
 
         df[M1_path].set_matrix(M1)
-        df[M2_path] = dreaml.OneHotEncoding(df[M1_path])
+        df[M2_path] = OneHotEncoding(df[M1_path])
 
         assert(df[M2_path].get_matrix()==M2).all()
 

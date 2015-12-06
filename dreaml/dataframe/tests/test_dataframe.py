@@ -291,7 +291,7 @@ class TestDataFrame:
         matrix1 = np.arange(8).reshape(2,4)
 
         df[row11,cols] = DataFrame.from_matrix(matrix1)
-        df[row2,cols] = dreaml.Identity(df[row1,cols])
+        df[row2,cols] = dreaml.transformations.Identity(df[row1,cols])
         # Check a few equalities from directory indexing 
         assert (df[row11,cols].get_matrix()==df[row1,cols].get_matrix()).all()
         assert (df[row1,cols].get_matrix()==matrix1).all()
@@ -374,7 +374,7 @@ class TestDataFrame:
         df = DataFrame()
         df[row1,col1] = DataFrame.from_matrix(matrix1)
         df[row2,col2]
-        df[row3,col3] = dreaml.Identity(df[row1,col1])
+        df[row3,col3] = dreaml.transformations.Identity(df[row1,col1])
 
         assert df[row2,col2].empty()
         assert df[row2,col3].empty()
