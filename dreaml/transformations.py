@@ -132,41 +132,54 @@ class GD(ContinuousTransform):
             target_df.set_matrix(x0)
 
 class SGD(ContinuousTransform):
-    def __init__(self,*args,**kwargs):
-        super(SGD,self).__init__(*args,**kwargs)
+    """ Returns a Transformation that runs SGD for a given loss ``f`` at initial
+    point ``x0``. By default, it will run with a minibatch size of 1, unless
+    keyword argument ``batch_size`` is provided. 
+
+    The function ``f`` will take as input the target dataframe partition,
+    ``*args``, and ``**kwargs``, with the exception of the keyword
+    argument``batch_size``. ``f`` should return a pair of values, the second of
+    which is the gradient.
+    """
+    def __init__(self,f,x0,*args,**kwargs):
+        self.batch_size = kwargs.pop('batch_size',1)
+
+        super(SGD,self).__init__(f,x0,*args,**kwargs)
         self.niters = 0
         self.batch = 0
 
-    # def init_func(self, target_df, f_opt, *args, **kargs):
-    def init_func(self, target_df,f,x0,batch_size=1,inputs=[],**kwargs):
-        # y = y_df.get_matrix()
-        # rows = [str(k) for k in np.unique(y)]
-        # rows = [str(k) for k in range(10)]
-        # target_df.set_structure(rows, X_df._col_index.keys())
-        rows,cols = f(None,*inputs,**kwargs)
+    def init_func(self, target_df,f,x0,*args,**kwargs):
+
+        if len(args)==0:
+            raise ValueError("Mini-batchable arguments must be provided. If\
+                none are necessary, consider using the gradient descent (GD)\
+                transformation instead.")
+
+        rows,cols = f(None,*args,**kwargs)
         target_df.set_structure(rows,cols)
         if x0.shape == target_df.shape():
             target_df.set_matrix(x0)
 
+
     # def continuous_func(self, target_df, f_opt, *args, **kwargs):
     # Note: we need to pass X,y explicity if we are to mini-batch them. 
-    def continuous_func(self, target_df,f,x0,batch_size=1,
-                        inputs=None,**kwargs):
+    def continuous_func(self, target_df,f,x0,*args,**kwargs):
         # t = time()
         # This should become a argument in the function
         step_size = 1e-4
-        n = inputs[0].shape()[0]
+        n = args[0].shape()[0]
 
         start = self.batch
-        end = min(start+batch_size,n)
-        g = f(target_df,*[df[start:end,:] for df in inputs],**kwargs)[1]
+        end = min(start+self.batch_size,n)
+        g = f(target_df,*[df[start:end,:] for df in args],**kwargs)[1]
         # print "shape comparison"
         # print params_df.shape()
         Theta = target_df.get_matrix()
 
         self.niters +=1
-        self.batch += batch_size
-        self.batch %= n
+        self.batch += self.batch_size
+        if self.batch >= n:
+            self.batch = 0
         Theta -= step_size*g
 
 class PCABasis(BatchTransform):
