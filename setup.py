@@ -1,4 +1,4 @@
-from setuptools import setuptools
+from setuptools import setup
 
 
 setup(
@@ -7,14 +7,13 @@ setup(
       author = 'Zico Kolter, Eric Wong, Terrence Wong',
       author_email = 'zkolter@cs.cmu.edu, ericwong@cs.cmu.edu, tw@andrew.cmu.edu', 
       packages = ['dreaml',
-                  'dreaml.index',
+                  'dreaml',
                   'dreaml.dataframe',
-                  'dreaml.transform',
+                  'dreaml.transformations',
                   'dreaml.frontend'],
       package_dir = {'dreaml': 'dreaml'},
       url="http://www.bitbucket.org",
       install_requires = ["networkx >= 1.9.1",
-                          "sortedcontainers >= 0.9.6",
                           "numpy >= 1.9.2",
                           "scipy >= 0.15.1",
                           "pandas >= 0.16.2"],
