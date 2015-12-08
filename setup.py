@@ -10,7 +10,7 @@ setup(
                   'dreaml.index',
                   'dreaml.dataframe',
                   'dreaml.transform',
-                  'dreaml.front_end'],
+                  'dreaml.frontend'],
       package_dir = {'dreaml': 'dreaml'},
       url="http://www.bitbucket.org",
       install_requires = ["networkx >= 1.9.1",
