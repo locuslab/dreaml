@@ -184,7 +184,7 @@ class DataFrame(object):
                 A = partition[row_idx,col_idx]
             else:
                 A = np.zeros((len(row_vals),len(col_vals)))
-                partition[row_idx,col_idx] = A
+                self._partitions[row_id,col_id] = A
         else: 
             A = np.zeros((len(row_vals),len(col_vals)))
             i=0
