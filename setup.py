@@ -15,7 +15,7 @@ setup(
       url="http://www.bitbucket.org",
       install_requires = ["networkx >= 1.9.1",
                           "numpy >= 1.9.2",
-                          "scipy >= 0.15.1",
-                          "pandas >= 0.16.2"],
+                          "scipy >= 0.15.1"],
+                          # "pandas >= 0.16.2"],
       )
 
