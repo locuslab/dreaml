@@ -6,15 +6,14 @@ class Softmax(Objective):
     @staticmethod
     def f(theta_df,X_df,y_df,reg=0.01):
         theta = theta_df.get_matrix()
-        penalty = reg/2*np.power(theta,2).sum()
         # X = X_df.get_matrix(readonly=True)
         # y = y_df.get_matrix(readonly=True)
         # P = Softmax._multiclass_prob(theta,X)
         # n = X.shape[0]
 
         # cost = np.mean(np.log([ P[y[i,0],i] for i in np.arange(n)]))
-        cost = np.mean(Softmax.f_vec(theta_df,X_df,y_df,reg=reg))
-        return -cost+penalty
+        return np.mean(Softmax.f_vec(theta_df,X_df,y_df,reg=reg))
+        # return -cost+penalty
     
     @staticmethod
     def f_vec(theta_df,X_df,y_df,reg=0.01):
@@ -23,8 +22,9 @@ class Softmax(Objective):
         y = y_df.get_matrix(readonly=True)
         P = Softmax._multiclass_prob(theta,X)
         n = X.shape[0]
+        penalty = reg/2*np.power(theta,2).sum()
 
-        return np.log([ P[y[i,0],i] for i in np.arange(n)])
+        return -np.log([ P[y[i,0],i] for i in np.arange(n)])+penalty
 
     @staticmethod
     def g(theta_df,X_df,y_df,reg=0.01):
@@ -57,7 +57,7 @@ class Softmax(Objective):
         n = X.shape[0]
         P = Softmax._multiclass_prob(theta,X)
         y_pred = np.argmax(P,axis=0)
-        return np.equal(np.squeeze(y),y_pred)
+        return np.not_equal(np.squeeze(y),y_pred)
 
     @staticmethod
     def _multiclass_prob(theta,X):
