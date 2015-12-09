@@ -88,7 +88,9 @@ function compress_indices(indices,index){
   return compressed;
 }
 
-d3.json("json/structure",function(err, data){ 
+var cur_data;
+
+draw = function(err, data){ 
 
   var margin = {top: 100, right: 0, bottom: 0, left: 100},
       width = $("#grid").width()-margin.left,
@@ -211,4 +213,15 @@ d3.json("json/structure",function(err, data){
     function mouseout() {
       d3.selectAll("text").classed("active", false);
     }
-});
+};
+
+console.log("first")
+d3.json("json/structure", draw)
+
+window.setInterval(function(){
+  console.log("running!");
+  d3.json("json/structure", function(err,data){
+    draw(err,data);
+    $("#grid").find("svg:first-child").remove();
+  });    
+}, 3000);
