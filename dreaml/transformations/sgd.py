@@ -32,6 +32,8 @@ class SGD(ContinuousTransform):
                 none are necessary, consider using the gradient descent (GD)\
                 transformation instead.")
         rows,cols = Obj.structure(*args,**kwargs)
+        print "structure size: "
+        print len(rows),len(cols)
         target_df.set_structure(rows,cols)
         if x0.shape == target_df.shape():
             target_df.set_matrix(x0)

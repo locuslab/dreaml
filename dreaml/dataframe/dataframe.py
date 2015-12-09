@@ -184,6 +184,7 @@ class DataFrame(object):
                 A = partition[row_idx,col_idx]
             else:
                 A = np.zeros((len(row_vals),len(col_vals)))
+                partition[row_idx,col_idx] = A
         else: 
             A = np.zeros((len(row_vals),len(col_vals)))
             i=0
@@ -192,6 +193,10 @@ class DataFrame(object):
                 for col_id,col_idx in col_vals:
                     if (row_id,col_id) in self._partitions:
                         A[i,j] = self._partitions[row_id,col_id][row_idx,col_idx]
+                    else:
+                        self._partitions[row_id,col_id] = \
+                            np.zeros((self._row_counts[row_id],\
+                                     self._col_counts[col_id]))
                     j+=1
                 i+=1
         # Finally, store the cached matrix
@@ -351,6 +356,9 @@ class DataFrame(object):
         subset = DataFrame()
         subset._row_index = self._row_index.subset(i)
         subset._col_index = self._col_index.subset(j)
+        subset._row_counts = self._row_counts
+        subset._col_counts = self._col_counts
+
         subset._partitions = self._partitions
         subset._cache = self._cache
         subset._df_cache = self._df_cache
@@ -774,13 +782,18 @@ class DataFrame(object):
 
     def _write_matrix_to(self,M,rows,cols): 
         """ Directly write a matrix to the specified rows and columns into the
-        underlying DataFrame, bypassing all other checks and constructs. """
+        underlying DataFrame, bypassing all other checks and constructs. 
+        If the underlying dataframe is non-initialized, we write it."""
         assert(M.shape == (len(rows),len(cols)))
         row_val = 0
         for (row_id,row_idx) in self._row_index[rows]:
             col_val = 0
             for (col_id,col_idx) in self._col_index[cols]:
                 # set it element-wise
+                # if (row_id,col_id) not in self._partitions:
+                #     self._partitions[row_id,col_id] = \
+                #         np.zeros(self._row_counts[row_id],
+                #                  self._col_counts[col_id])
                 self._partitions[row_id,col_id] \
                                 [row_idx,col_idx] \
                                 = M[row_val,col_val]
@@ -951,14 +964,14 @@ class DataFrame(object):
         row_ids = [v[0] for v in top_df._row_index[full_rows]]
         col_ids = [v[0] for v in top_df._col_index[full_cols]]
 
-        for row_id in row_ids:
-            for col_id in col_ids:
-                if (row_id,col_id) not in top_df._partitions:
-                    # Currently set to a numpy array of zeros
-                    # TODO: set according to type specified
-                    top_df._partitions[row_id,col_id] \
-                        = np.zeros((top_df._row_counts[row_id], \
-                                    top_df._col_counts[col_id]))
+        # for row_id in row_ids:
+        #     for col_id in col_ids:
+        #         if (row_id,col_id) not in top_df._partitions:
+        #             # Currently set to a numpy array of zeros
+        #             # TODO: set according to type specified
+        #             top_df._partitions[row_id,col_id] \
+        #                 = np.zeros((top_df._row_counts[row_id], \
+        #                             top_df._col_counts[col_id]))
         if self.hash() in top_df._graph and \
             top_df._graph.node[self.hash()]["transform"] is not None:
             top_df._refresh(top_df._graph.node[self.hash()]["transform"])
@@ -974,6 +987,8 @@ class DataFrame(object):
         """ Remove all cached dataframe entries that are dependent on i_j """
         if i_j in self._df_cache:
             del self._df_cache[i_j]
+            if i_j in self._cache:
+                self._cache_evict(i_j)
         implicit_dependents = self._get_df_implicit_dependents(i_j)
         for k_l in implicit_dependents:
             if k_l in self._df_cache:
@@ -1114,7 +1129,10 @@ class DataFrame(object):
 
             # Remove from cache before setting in dataframe
             i,j = i_j
-
+            # print i_j
+            # print M
+            # print old_rows
+            # print old_cols
             assert(len(i) == len(j))
             df = self._reindex(i_j)        
             df._write_matrix_to(M,old_rows,old_cols)
