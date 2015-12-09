@@ -26,3 +26,4 @@ from pcabasis import PCABasis
 from permute import Permute
 from sgd import SGD
 from zeromean import ZeroMean
+from metrics import Metrics
