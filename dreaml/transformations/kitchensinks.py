@@ -27,4 +27,5 @@ class KitchenSinks(BatchTransform):
         W = random.randn(X.shape[1], num_features) / s / np.sqrt(2)
         B = random.uniform(0, 2*np.pi, num_features)
 
-        return DataFrame.from_matrix(np.cos(X.dot(W)+ B))
+        return DataFrame.from_matrix(np.cos(X.dot(W)+ B),
+                                     row_labels=X_df.rows())

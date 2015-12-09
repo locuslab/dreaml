@@ -157,8 +157,8 @@ class TestTransformation:
         # print M1_reconstructed
 
         M1_reconstructed2 = M1.dot(v).dot(v.T)
-        print M1_reconstructed2
-        print M1.dot(v.dot(v.T))
+        # print M1_reconstructed2
+        # print M1.dot(v.dot(v.T))
 
 
         covmat = (1./(n-1))*M1.T.dot(M1)
@@ -179,5 +179,9 @@ class TestTransformation:
         pca_path = ("pca/","pca/")
         df[pca_path] = PCA(df[M1_path],df[M3_path],d)
         pca = df[pca_path].get_matrix()
-        assert np.isclose(pca,M3.dot(evmat_sorted)).all()
+        proj = M3.dot(evmat_sorted)
+
+        for i in range(pca.shape[1]):
+            assert np.isclose(pca[:,i], proj[:,i]).all() or \
+                   np.isclose(pca[:,i],-proj[:,i]).all()
 
