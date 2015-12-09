@@ -5,6 +5,8 @@ import numpy as np
 import numpy.random as nprand
 from time import sleep
 from dreaml.transformations import *
+import numpy.linalg
+import scipy.linalg
 
 class TestTransformation:
     def setUp(self):
@@ -131,5 +133,51 @@ class TestTransformation:
 
         assert(df[M2_path].get_matrix()==M2).all()
 
+    def test_PCA_basis(self):
+        df = DataFrame()
+        M1_path = ("row1/","col1/")
+        M2_path = ("row2/","col2/")
+        n = 10
+        m = 5
+        d = 3
+        M1 = nprand.rand(n,m)
+        M1 = M1 - np.mean(M1,axis=0)
+        # print M1
+        df[M1_path].set_matrix(M1)
 
+        df[M2_path] = PCABasis(df[M1_path],d)
+
+        u,s,v_T = numpy.linalg.svd(M1,full_matrices=False)
+        s[d+1:] = 0
+
+        v = v_T.T[:,:d]
+
+        M1_reconstructed = u.dot(np.diag(s).dot(v_T))
+        # print M1
+        # print M1_reconstructed
+
+        M1_reconstructed2 = M1.dot(v).dot(v.T)
+        print M1_reconstructed2
+        print M1.dot(v.dot(v.T))
+
+
+        covmat = (1./(n-1))*M1.T.dot(M1)
+        evs, evmat = scipy.linalg.eig(covmat)
+        p = np.argsort(evs)[::-1]
+        evmat_sorted = evmat[:,p][:,:d]
+        M1_reconstructed3 = M1.dot(evmat_sorted).dot(evmat_sorted.T)
+        
+        basis = df[M2_path].get_matrix()
+        for i in range(evmat_sorted.shape[1]):
+            assert np.isclose(basis[:,i], evmat_sorted[:,i]).all() or \
+                   np.isclose(basis[:,i],-evmat_sorted[:,i]).all()
+
+        M3_path = ("row3/","col3/")
+        M3 = nprand.rand(2*n,m)
+        M3 = M3 - np.mean(M1,axis=0)
+        df[M3_path].set_matrix(M3)
+        pca_path = ("pca/","pca/")
+        df[pca_path] = PCA(df[M1_path],df[M3_path],d)
+        pca = df[pca_path].get_matrix()
+        assert np.isclose(pca,M3.dot(evmat_sorted)).all()
 
