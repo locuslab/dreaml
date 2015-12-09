@@ -425,7 +425,8 @@ class DataFrame(object):
             else: 
                 # print "df cache miss at "+str(k_l)
                 df_subset = self._subset(i,j)
-                self._df_cache[k_l] = df_subset
+                # self._df_cache[k_l] = df_subset
+                self._df_cache_add(k_l,df_subset)
                 return df_subset
 
 
@@ -913,6 +914,8 @@ class DataFrame(object):
         (rows,cols) = self._get_full_rows_and_cols(i_j, ignore_df_cache=True)
 
         dependents = set()
+
+        self._df_cache_lock.acquire()
         for (i0_j0) in self._df_cache:
             row_dir,col_dir = DataFrame._node_directory_overlap(i_j,i0_j0)
             if row_dir or col_dir:
@@ -921,6 +924,7 @@ class DataFrame(object):
                 if (any(r in rows for r in rows0) \
                     or any(c in cols for c in cols0)):
                     dependents.add(i0_j0)
+        self._df_cache_lock.release()
         return dependents
 
     def _get_explicit_dependents(self,i_j):
@@ -985,8 +989,10 @@ class DataFrame(object):
 
     def _df_cache_flush(self,i_j):
         """ Remove all cached dataframe entries that are dependent on i_j """
+        print "flushing "+str(i_j)
         if i_j in self._df_cache:
-            del self._df_cache[i_j]
+            # del self._df_cache[i_j]
+            self._df_cache_del(i_j)
             if i_j in self._cache:
                 self._cache_evict(i_j)
         implicit_dependents = self._get_df_implicit_dependents(i_j)
@@ -998,7 +1004,7 @@ class DataFrame(object):
                 # cache. 
                 if k_l in self._cache:
                     self._cache_evict(k_l)
-                del self._df_cache[k_l]
+                self._df_cache_del(k_l)
 
 
     def _refresh(self,T): 
@@ -1120,6 +1126,7 @@ class DataFrame(object):
     def _cache_evict(self,i_j):
         """ Evict the matrix for node i_j from the cache, and write the
         cached data through to do the underlying DataFrame. """
+        print "evicting "+str(i_j)
         self._cache_lock.acquire()
         if (i_j in self._cache):
             M = self._cache_fetch(i_j)
@@ -1165,3 +1172,14 @@ class DataFrame(object):
         """ Retrieve the cols for node i_j corresponding to the the cached
         matrix """
         return self._cache[i_j][2]
+
+    def _df_cache_del(self,i_j):
+        self._df_cache_lock.acquire()
+        if i_j in self._df_cache:
+            del self._df_cache[i_j]
+        self._df_cache_lock.release()
+
+    def _df_cache_add(self,i_j,df):
+        self._df_cache_lock.acquire()
+        self._df_cache[i_j] = df
+        self._df_cache_lock.release()
