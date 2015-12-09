@@ -35,7 +35,10 @@ MOCK_MODULES = ['numpy',
                 'bokeh.io',
                 'bokeh.embed',
                 'pandas',
-                'flask']
+                'flask',
+                'flask_bootstrap',
+                'flask_nav',
+                'flask_nav.elements']
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 # If extensions (or modules to document with autodoc) are in another directory,
