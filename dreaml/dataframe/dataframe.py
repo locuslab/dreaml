@@ -204,10 +204,7 @@ class DataFrame(object):
         return A
 
     def set_structure(self,rows,cols):
-        # print self._col_index.keys()
         self._refresh_index()
-        # print self._col_index.keys()
-        # print self._top_df._col_index.keys()
         if self._row_index.keys()==rows and self._col_index.keys()==cols:
             return
         else:
@@ -258,8 +255,6 @@ class DataFrame(object):
             implicit += ([(node,e) for e 
                             in self._get_implicit_dependents(node)
                             if node != e])
-        
-        # print implicit
 
         implicit = [(DataFrame._query_to_string(n1),
                      DataFrame._query_to_string(n2)) for (n1,n2) in implicit]
@@ -420,12 +415,9 @@ class DataFrame(object):
             k_l = (self._row_query + (self._query_to_tuple_element(i),),
                    self._col_query + (self._query_to_tuple_element(j),))
             if k_l in self._df_cache:
-                # print "cache hit for "+str(k_l)
                 return self._df_cache[k_l]
             else: 
-                # print "df cache miss at "+str(k_l)
                 df_subset = self._subset(i,j)
-                # self._df_cache[k_l] = df_subset
                 self._df_cache_add(k_l,df_subset)
                 return df_subset
 
@@ -984,12 +976,10 @@ class DataFrame(object):
         self._refresh_index()
 
         for j_k in self._cache_find_evictions(self.hash()):
-            print "evicting "+str(j_k)
             self._cache_evict(j_k)
 
     def _df_cache_flush(self,i_j):
         """ Remove all cached dataframe entries that are dependent on i_j """
-        print "flushing "+str(i_j)
         if i_j in self._df_cache:
             # del self._df_cache[i_j]
             self._df_cache_del(i_j)
@@ -1019,7 +1009,6 @@ class DataFrame(object):
                 query = (args[i]._row_query,args[i]._col_query)
                 if query in self._cache:
                     self._cache_evict(query)
-                # print "REFRESH"
                 # I think this is unnecessary: the df has not changed shape here
                 # self._df_cache_flush(query)
         T.args = tuple(args)
@@ -1126,7 +1115,6 @@ class DataFrame(object):
     def _cache_evict(self,i_j):
         """ Evict the matrix for node i_j from the cache, and write the
         cached data through to do the underlying DataFrame. """
-        print "evicting "+str(i_j)
         self._cache_lock.acquire()
         if (i_j in self._cache):
             M = self._cache_fetch(i_j)
@@ -1136,10 +1124,6 @@ class DataFrame(object):
 
             # Remove from cache before setting in dataframe
             i,j = i_j
-            # print i_j
-            # print M
-            # print old_rows
-            # print old_cols
             assert(len(i) == len(j))
             df = self._reindex(i_j)        
             df._write_matrix_to(M,old_rows,old_cols)

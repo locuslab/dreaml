@@ -106,7 +106,6 @@ class ContinuousTransform(Transform):
         while(graph.node[i_j]["status"] is not target_df.STATUS_RED):
             # If this child is not blocked then we can run the function
             self._apply_function_to(target_df,self.continuous_func)
-        print "continuous function killed!"
 
 Transform.register(BatchTransform)
 Transform.register(ContinuousTransform)

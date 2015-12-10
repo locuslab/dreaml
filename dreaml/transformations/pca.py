@@ -15,8 +15,6 @@ class PCA(BatchTransform):
         df[pca_basis_location] = PCABasis(X_pca_df,num_bases)
         v = df[pca_basis_location].get_matrix()
         X_full = X_full_df.get_matrix()
-        print X_full.shape
-        print v.shape
         output = DataFrame.from_matrix((X_full-X_mean).dot(v),
                                        row_labels=X_full_df.rows(),
                                        col_labels=df[pca_basis_location].cols())
