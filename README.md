@@ -8,7 +8,7 @@ dreaml (dynamic reactive machine learning, procounced "Dream ML") is a Python li
 Documentation and examples are available at http://www.dreaml.io
 
 # Installation
-You can install the library using `pip install dreaml`.  
+Run `python setup.py install` in the directory above to install the library.
 
 # Development
 dreaml is under active development and we expect that some aspects of the system and API may change in the future.  Any feature requests, bug reports, or other comments are greatly appreciated.
