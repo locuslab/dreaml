@@ -674,7 +674,8 @@ class DataFrame(object):
         convert the input into a DataFrame. 
 
         If type = Transform, then we evaluate the transform and call
-            __setitem__ on the result (within the apply function)
+        __setitem__ on the result (within the apply function)
+        
         If type = singleton, then wrap it in a proper dataframe. 
         Otherwise, we case on whether the keys for the columns and rows
         already exist or not. 
@@ -683,6 +684,7 @@ class DataFrame(object):
         occur at the top level DataFrame. All child DataFrames refetch their
         row/column indices from the top level DataFrame when necessary via
         refresh_index(). 
+
         """
         i,j = i_j
 
