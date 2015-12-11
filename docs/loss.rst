@@ -1,4 +1,5 @@
 Loss Functions
 ===============
 
-content here
+.. automodule:: dreaml.loss
+   :members:
