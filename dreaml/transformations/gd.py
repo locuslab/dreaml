@@ -1,7 +1,10 @@
 from dreaml.dataframe.transform import ContinuousTransform
 
 class GD(ContinuousTransform):
+    """Runs gradient descent on the given function."""
+    __module__ = "dreaml.transformations"
     def __init__(self,*args,**kwargs):
+        self.step_size = kwargs.pop('step_size',1e-4)
         super(GD,self).__init__(*args,**kwargs)
         self.niters = 0
 
@@ -11,7 +14,7 @@ class GD(ContinuousTransform):
 
         P = target_df.get_matrix()
 
-        P -= 0.1*res
+        P -= self.step_size*res
 
     def init_func(self,target_df,Obj,x0,*args,**kwargs):
         rows,cols = Obj.structure(*args,**kwargs)

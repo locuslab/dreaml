@@ -12,7 +12,13 @@ from threading import Lock
 import json
 
 class DataFrame(object):
-    """ DataFrame class, maintains a sparse block array format. """
+    """ The DataFrame class organizes data in a block sparse array format using
+    a hierarchical structure. 
+
+    The DataFrame maintains two sets of indices for both the row and the column
+    of the DataFrame. Both of these can be indexed via their hierarchical
+    structure. 
+    """
 
     # Blue blocks are the parent of the propogation
     STATUS_BLUE="blue"
@@ -22,7 +28,7 @@ class DataFrame(object):
     STATUS_RED="red"
 
     def __init__(self):
-        """ Initializer, create empty dataframe. """
+        """ Initializes an empty DataFrame. """
         self._row_index = Index()
         self._col_index = Index()
         self._partitions = {}
@@ -44,13 +50,13 @@ class DataFrame(object):
         self._plots = []
 
     @classmethod
-    def from_csv(cls, filename, header=True, index_col=None):
+    def _from_csv(cls, filename, header=True, index_col=None):
         """ Load from csv file, setting column names from header and row names
         from entries in indx_col."""
         pass
 
     @classmethod
-    def from_pandas(cls, pandas_df):
+    def _from_pandas(cls, pandas_df):
         """ Load from a pandas dataframe, keeping row and column names (but 
         converting to strings when they are not strings). """
         pass
@@ -58,8 +64,26 @@ class DataFrame(object):
     @classmethod
     def from_matrix(cls, matrix, row_labels=None, col_labels=None,):
         """ Initialize from matrix (2D numpy array or 2D numpy matrix, or
-        any type of scipy sparse matrix).  Keep whatever format the matrix is
-        currently in. """
+        any type of scipy sparse matrix).  
+        
+        The DataFrame keeps whatever format the matrix is currently in. 
+        If no row or column labels are specified, then the DataFrame defaults to
+        numerical labels. 
+
+        Args: 
+            matrix: The matrix from which the DataFrame is initialized.
+            row_labels: An optional list of labels for the rows of the DataFrame.
+            col_labels: An optional list of labels for the columns of the DataFrame.
+
+        Returns:
+            A DataFrame containing the input matrix and with row and column
+            labels mapping to the rows and columns of the input matrix. If no
+            row or column label is specified, we default to numerical labels. 
+
+        Raises:
+            ValueError: An error occurred when comparing the shape of the matrix
+            with the row and column labels.
+        """
         if not matrix.shape>0:
             raise ValueError
         if row_labels==None:
@@ -67,7 +91,9 @@ class DataFrame(object):
         if col_labels==None:
             col_labels = [str(i) for i in range(matrix.shape[1])]
 
-        assert((len(row_labels),len(col_labels)) == matrix.shape)
+        if not ((len(row_labels),len(col_labels)) == matrix.shape):
+            raise ValueError("Provided row labels and column labels must match\
+                the dimensions of the given matrix.")
 
         df = DataFrame()
         row_id = df._add_rows(row_labels)
@@ -77,15 +103,15 @@ class DataFrame(object):
         return df
 
     def pwd(self):
-        """ Return the working directory of both the row and column index """
-        # row = ""
-        # col = ""
-        # for q in self._row_query:
-        #     if isinstance(q,str):
-        #         row+=q
-        # for q in self._col_query:
-        #     if isinstance(q,str):
-        #         col+=q
+        """ Return the working directory of both the row and column index. 
+
+        After a series of hierarchical indexing, pwd will return the current
+        working directory given these previous indices. 
+
+        Returns: 
+            A two-tuple containing the row-directory and column directory of the
+            current DataFrame. 
+        """
         row = DataFrame._concat_strings(self._row_query)
         col = DataFrame._concat_strings(self._col_query)
         return row,col
@@ -99,13 +125,27 @@ class DataFrame(object):
         return s
 
     def shape(self):
-        """ Return the shape of the values in the DataFrame """
+        """ Returns the shape of the DataFrame.
+
+        Returns: 
+            A two-tuple containing the number of rows and the number of columns
+            in the DataFrame. 
+        """
         self._refresh_index()
         return (len(self._row_index),len(self._col_index))
 
     def empty(self):
-        """ Return whether the DataFrame has non-zero width or height. This
-        ignores the initialization status of the actual partitions. """
+        """ Return whether the DataFrame has non-zero width or height. 
+
+        This is equivalent to checking if any of the values returned by
+        shape are equal to 0. 
+
+        Returns: 
+            A boolean indicating whether the DataFrame has 0 size. 
+
+        Note: 
+            This ignores the values or presence of of the actual underlying matrices. 
+        """
         self._refresh_index()
         n_rows,n_cols = self.shape()
         # return n_rows==0 or n_cols==0
@@ -113,7 +153,13 @@ class DataFrame(object):
             return True
 
     def set_matrix(self,M):
-        """ Set the DataFrame's contents to be the matrix M """
+        """ Set the DataFrame's contents to be the matrix M.
+
+        This function uses numerical labels for each dimension in the DataFrame.
+
+        Args: 
+            M: The matrix that will be the target of the DataFrame.
+        """
         if self.empty():
             self.set_dataframe(DataFrame.from_matrix(M))
         else:
@@ -125,7 +171,14 @@ class DataFrame(object):
                                                      col_labels=cols))
 
     def set_dataframe(self,M_df):
-        """ Set the DataFrame's contents to match the given DataFrame M_df """
+        """ Set the DataFrame's contents to match the given DataFrame M_df 
+
+        This function uses the labels present in the given DataFrame as the row
+        and column labels. 
+
+        Args: 
+            M_df: The DataFrame whose contents will be copied. 
+        """
         self._refresh_index()
         if len(self._row_query)>0:
             df,r,c = self._last_query((self._row_query,self._col_query))
@@ -134,15 +187,19 @@ class DataFrame(object):
             self.__setitem__((slice(None,None,None),slice(None,None,None)),M_df)
 
     def get_matrix(self,readonly=False,type=None):
-        """ Dump the dataframe as a matrix by iterating over all the keys. 
-        Readonly: assumes the data is static, and does not purge conflicts.
-        Multiple overlapping read-only matrices can simultaneously exist in the
-        cache. 
-        Type: If a type is specified, then the matrix returned is of that type. 
-        If a type is not specified, then the matrix returned inherits the type
-        of the upper left most partition of the queried matrix. 
+        """ Return a matrix containing the underlying elements of the DataFrame.
+
+        Args:
+            readonly: assumes the data is static, and does not purge conflicts.
+                Multiple overlapping read-only matrices can simultaneously exist in the
+                cache. 
+            type: 
+                If a type is specified, then the matrix returned is of that type. 
+                If a type is not specified, then the matrix returned inherits the type
+                of the upper left most partition of the queried matrix. 
+
+        Returns: A matrix whose contents are identical to that of the DataFrame.
         """
-        # If entry is cached, return it
         self._refresh_index()
 
         assert((len(self._row_index),len(self._col_index))
@@ -204,6 +261,15 @@ class DataFrame(object):
         return A
 
     def set_structure(self,rows,cols):
+        """ Sets the rows and columns labels of the DataFrame to the given lists
+        of rows and columns.
+
+        Args: 
+            rows: A list of strings that will be set to the rows of this
+                DataFrame.
+            cols: A list of strings that will be set to the columns of this
+                DataFrame. 
+        """
         self._refresh_index()
         if self._row_index.keys()==rows and self._col_index.keys()==cols:
             return
@@ -211,7 +277,12 @@ class DataFrame(object):
             self._extend(rows,cols)
 
     def copy_structure(self,df):
-        """ Extend the DataFrame to match the structure given in df """
+        """ Extend the DataFrame to match the structure given in df. 
+
+        Args:
+            df: A DataFrame whose hierarchical structure will be copied to the
+                current DataFrame
+        """
         self._refresh_index()
         df._refresh_index()
         rows = df._row_index.keys()
@@ -222,8 +293,13 @@ class DataFrame(object):
             self._extend(rows,cols)
 
     def structure_to_json(self):
-        """ Produce a JSON object with all the structural information of the
-        dataframe """
+        """ Produce a JSON object with all the hierarchical structure
+        information of the dataframe. 
+
+        Returns:
+            A JSON object with properties rows, cols, row_index, col_index, and
+            partitions containing the respective information. 
+        """
         rows = []
         cols = []
         for r in self._row_index:
@@ -243,7 +319,13 @@ class DataFrame(object):
 
     def graph_to_json(self):
         """ Produce a JSON object with all the computational graph information 
-        of the dataframe """
+        of the dataframe. 
+
+        Returns:
+            A JSON object with properties nodes, edges, and implicit containing 
+            the respective information (nodes, edges, and implicit edges from
+            the dataframe hierarchicalstructure). 
+        """
         nodes = [DataFrame._query_to_string(n) for n in self._graph.nodes()]
         edges = [(DataFrame._query_to_string(n1),
                   DataFrame._query_to_string(n2))
@@ -308,21 +390,40 @@ class DataFrame(object):
         return json.dumps(out)
 
     def T(self):
+        """ Return the Transformation that generates this DataFrame. 
+
+        Returns: A transformation T if the target of T is this DataFrame, and
+            None otherwise. 
+        """
         if self.hash() in self._graph.node:
             return self._graph.node[self.hash()]["transform"]
         else:
             return None
 
     def status(self):
+        """ Return the running status of the DataFrame.
+
+        Returns blue if the DataFrame is currently the root of a propogation,
+        red if the DataFrame is waiting to propogate, and green if the DataFrame
+        has finished propogating and is otherwise safe to read from. 
+
+        A propogation occurs when underlying structure changes, and causes
+        transformations to be re-run. 
+
+        Returns: 
+            blue | green | red 
+        """
         if self.hash() in self._graph.node:
             return self._graph.node[self.hash()]["status"]
         else:
             return None
 
     def rows(self):
+        """ Return a list of all the rows that index into the DataFrame. """
         return self._row_index.keys()
 
     def cols(self):
+        """ Return a list of all the columns that index into the DataFrame. """
         return self._col_index.keys()
 
     @staticmethod
@@ -812,7 +913,11 @@ class DataFrame(object):
     # computational dependencies are dirty, and recursively apply. 
 
     def stop(self):
-        """ Stop the continuous thread associated with the DataFrame """
+        """ Stop the continuous thread that generates this DataFrame. 
+
+        If a thread is running that generates this DataFrame, that thread will
+        be stopped as soon as it finishes an iteration. 
+        """
         i_j = self.hash()
         if i_j in self._threads and \
            self._graph.node[i_j]["status"] != self.STATUS_RED:
@@ -821,6 +926,9 @@ class DataFrame(object):
             del self._threads[i_j]
         else: 
             print "Thread not found!"
+
+    def stop_all(self):
+        pass
 
     def _add_to_graph(self,i_j, status,transform=None):
         """ Add a node to the graph and add all of its explicit edges.
@@ -1158,12 +1266,14 @@ class DataFrame(object):
         return self._cache[i_j][2]
 
     def _df_cache_del(self,i_j):
+        """ Delete the entry for i_j in the df cache """
         self._df_cache_lock.acquire()
         if i_j in self._df_cache:
             del self._df_cache[i_j]
         self._df_cache_lock.release()
 
     def _df_cache_add(self,i_j,df):
+        """ Add the entry for i_j in the df cache """
         self._df_cache_lock.acquire()
         self._df_cache[i_j] = df
         self._df_cache_lock.release()
