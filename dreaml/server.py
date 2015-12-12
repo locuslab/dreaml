@@ -3,6 +3,11 @@ from frontend.start import create_app
 from dreaml import DataFrame
 import webbrowser
 
+import logging
+# disable logging messages to reduce clutter in the python interpreter
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
+
 def start(df,new=1):
     """Launches a flask webapp to serve data visualizations for the
     dataframe df. 
