@@ -5,7 +5,16 @@ import webbrowser
 
 def start(df,new=1):
     """Launches a flask webapp to serve data visualizations for the
-    dataframe df. By default this launches at http://localhost:5000"""
+    dataframe df. 
+
+    By default this launches at http://localhost:5000
+
+    Args: 
+        df: The DataFrame that the web server uses for visualizations. 
+        new: An optional argument that controls whether a link to the server is
+            opened in a new browser or a new tab.
+
+    """
     if hasattr(df,"web_thread"):
         print "Server already running!"
     else:

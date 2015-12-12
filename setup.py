@@ -7,7 +7,6 @@ setup(
       author = 'Zico Kolter, Eric Wong, Terrence Wong',
       author_email = 'zkolter@cs.cmu.edu, ericwong@cs.cmu.edu, tw@andrew.cmu.edu', 
       packages = ['dreaml',
-                  'dreaml',
                   'dreaml.dataframe',
                   'dreaml.transformations',
                   'dreaml.frontend'],
