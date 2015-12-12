@@ -9,6 +9,12 @@ transformation can be defined to generate new blocks in the DataFrame. These
 transformations are entirely modular: you can pick and choose transformations,
 or define your own and replace existing transformations. 
 
+We are always looking to grow the library of general built-in transformations!
+Go ahead and submit a request on GitHub_ to add your own transformations to the
+library.
+
+.. _Github: https://github.com/locuslab/dreaml
+
 User-defined Transformations
 ----------------------------
 It is extremely simple to define your own transformation. As an example, here is
