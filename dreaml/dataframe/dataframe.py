@@ -159,6 +159,8 @@ class DataFrame(object):
 
         Args: 
             M: The matrix that will be the target of the DataFrame.
+            row_labels: (optional) list of labels for the rows of the matrix.
+            col_labels: (optional) list of labels for the columns of the matrix.
         """
         if self.empty():
             self.set_dataframe(DataFrame.from_matrix(M,
