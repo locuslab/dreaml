@@ -152,7 +152,7 @@ class DataFrame(object):
         if n_rows==0 or n_cols==0:
             return True
 
-    def set_matrix(self,M):
+    def set_matrix(self,M,row_labels=None,col_labels=None):
         """ Set the DataFrame's contents to be the matrix M.
 
         This function uses numerical labels for each dimension in the DataFrame.
@@ -161,7 +161,9 @@ class DataFrame(object):
             M: The matrix that will be the target of the DataFrame.
         """
         if self.empty():
-            self.set_dataframe(DataFrame.from_matrix(M))
+            self.set_dataframe(DataFrame.from_matrix(M,
+                                                     row_labels=row_labels,
+                                                     col_labels=col_labels))
         else:
             self._refresh_index()
             rows = self._row_index.keys()
@@ -675,7 +677,7 @@ class DataFrame(object):
 
         If type = Transform, then we evaluate the transform and call
         __setitem__ on the result (within the apply function)
-        
+
         If type = singleton, then wrap it in a proper dataframe. 
         Otherwise, we case on whether the keys for the columns and rows
         already exist or not. 
