@@ -62,7 +62,7 @@ class TestTransformation:
 
         M2 = np.zeros((3,5))
         
-        df[M2_path] = GD(loss.Toy,M2,None,y_df=df[M1_path])
+        df[M2_path] = GD(loss.Toy,M2,None,y_df=df[M1_path],step_size=1)
         sleep(1)
         # df[M2_path].stop()
         assert np.allclose(df[M2_path].get_matrix(),df[M1_path].get_matrix())
