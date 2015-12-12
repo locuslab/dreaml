@@ -190,7 +190,7 @@ class DataFrame(object):
         else:
             self.__setitem__((slice(None,None,None),slice(None,None,None)),M_df)
 
-    def get_matrix(self,readonly=False,type=None):
+    def get_matrix(self,readonly=False,typ=None):
         """ Return a matrix containing the underlying elements of the DataFrame.
 
         Args:
@@ -201,6 +201,8 @@ class DataFrame(object):
                 If a type is specified, then the matrix returned is of that type. 
                 If a type is not specified, then the matrix returned inherits the type
                 of the upper left most partition of the queried matrix. 
+                Currently accepted types are numpy.ndarray and
+                scipy.sparse.csr_matrix
 
         Returns: A matrix whose contents are identical to that of the DataFrame.
         """
@@ -244,10 +246,16 @@ class DataFrame(object):
                 col_idx = [v[1] for v in col_vals]
                 A = partition[row_idx,col_idx]
             else:
-                A = np.zeros((len(row_vals),len(col_vals)))
+                if typ == sp.csr_matrix:
+                    A = sp.csr_matrix((len(row_vals),len(col_vals)))
+                else:
+                    A = np.zeros((len(row_vals),len(col_vals)))
                 self._partitions[row_id,col_id] = A
         else: 
-            A = np.zeros((len(row_vals),len(col_vals)))
+            if typ == sp.csr_matrix:
+                A = sp.csr_matrix((len(row_vals),len(col_vals)))
+            else:
+                A = np.zeros((len(row_vals),len(col_vals)))
             i=0
             for row_id,row_idx in row_vals:
                 j=0
@@ -255,11 +263,23 @@ class DataFrame(object):
                     if (row_id,col_id) in self._partitions:
                         A[i,j] = self._partitions[row_id,col_id][row_idx,col_idx]
                     else:
-                        self._partitions[row_id,col_id] = \
-                            np.zeros((self._row_counts[row_id],\
-                                     self._col_counts[col_id]))
+                        if typ == sp.csr_matrix:
+                            self._partitions[row_id,col_id] = \
+                                sp.csr_matrix((self._row_counts[row_id],\
+                                               self._col_counts[col_id]))
+                        else:
+                            self._partitions[row_id,col_id] = \
+                                np.zeros((self._row_counts[row_id],\
+                                         self._col_counts[col_id]))
                     j+=1
                 i+=1
+
+        if typ != None:
+            if typ == sp.csr_matrix and not sp.issparse(A):
+                A = A.toarray()
+            elif typ == np.ndarray and sp.issparse(A):
+                A = sp.csr_matrix(A)
+
         # Finally, store the cached matrix
         self._cache_add(i_j, A)
         return A
