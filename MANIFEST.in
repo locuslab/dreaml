@@ -1,0 +1,2 @@
+recursive-include dreaml/frontend/templates *
+recursive-include dreaml/frontend/static *

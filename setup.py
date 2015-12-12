@@ -3,11 +3,12 @@ from setuptools import setup
 
 setup(
       name='dreaml',
-      version='0.0.1',
+      version='0.0.7',
       author = 'Zico Kolter, Eric Wong, Terrence Wong',
       author_email = 'zkolter@cs.cmu.edu, ericwong@cs.cmu.edu, tw@andrew.cmu.edu', 
       packages = ['dreaml',
                   'dreaml.dataframe',
+                  'dreaml.loss',
                   'dreaml.transformations',
                   'dreaml.frontend'],
       package_dir = {'dreaml': 'dreaml'},
@@ -16,5 +17,6 @@ setup(
                           "numpy >= 1.9.2",
                           "scipy >= 0.15.1",
                           "pandas >= 0.16.2"],
+      include_package_data = True,
       )
 
