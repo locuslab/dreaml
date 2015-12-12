@@ -20,7 +20,9 @@ Contents:
 
 .. toctree::
    :maxdepth: 2
-
+   
+   install
+   example
    dataframe
    server 
    transformations
