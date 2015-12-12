@@ -6,7 +6,7 @@ dreaml on a standard machine learning task: classifying digits in the MNIST
 dataset. 
 
 We recommend running this example from the IPython notebook, which is located in
-the examples directory is also on our GitHub page here_. 
+the examples directory and is also on our GitHub page here_. 
 
 .. _here: https://github.com/locuslab/dreaml
 

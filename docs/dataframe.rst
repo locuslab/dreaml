@@ -53,12 +53,14 @@ This can be somewhat circumvented when dealing with *static* matrices whose
 values don't change: supplying a ``readonly`` flag to ``get_matrix`` will
 allow overlapping matrices to remain in the cache.
 
+
 .. code-block:: python
     
     df["data/train/","raw/"].get_matrix(readonly=True)
 
-    // Will not evict the previous query! 
+    // Will not evict the previous query
     df["data/","raw/"].get_matrix(readonly=True)
+
 
 Methods
 -------
