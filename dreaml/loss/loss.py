@@ -1,4 +1,3 @@
-from dataframe.dataframe import DataFrame
 import numpy as np
 from random import randint
 
@@ -64,11 +63,15 @@ class Softmax(Loss):
     where y_p is a vector of real-valued numbers and y_t is a binary indicator.
     """
     def __init__(self, y_prediction, y_target):
-        self.z = np.exp(y_prediction)
-        self.sz = np.sum(self.z,axis=y_prediction.ndim-1)
+        self.a = np.amax(y_prediction,axis=y_prediction.ndim-1)
+        self.z = np.exp(y_prediction-self.a[:,None])
+        self.sz = np.sum(self.z,axis=y_prediction.ndim-1) 
+
         self.h = None
+        self.yp = y_prediction
         self.yt = y_target
-    def f(self): return np.log(self.sz)
+    def f(self): 
+        return self.a + np.log(self.sz) - self.yp[self.yt]
     def g(self): 
         if self.h is None:
             self.h = self.z / self.sz[:,None]

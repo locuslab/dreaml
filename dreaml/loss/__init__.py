@@ -15,5 +15,4 @@ limitations under the License.
 """
 
 __version__ = "0.0.1"
-from toy import Toy
-from softmax import Softmax
+from loss import Softmax
