@@ -124,6 +124,17 @@ class DataFrame(object):
                 s += q
         return s
 
+    # def shape(self):
+    #     """ Returns the shape of the DataFrame.
+
+    #     Returns: 
+    #         A two-tuple containing the number of rows and the number of columns
+    #         in the DataFrame. 
+    #     """
+    #     self._refresh_index()
+    #     return (len(self._row_index),len(self._col_index))
+
+    @property
     def shape(self):
         """ Returns the shape of the DataFrame.
 
@@ -147,7 +158,7 @@ class DataFrame(object):
             This ignores the values or presence of of the actual underlying matrices. 
         """
         self._refresh_index()
-        n_rows,n_cols = self.shape()
+        n_rows,n_cols = self.shape
         # return n_rows==0 or n_cols==0
         if n_rows==0 or n_cols==0:
             return True
@@ -209,14 +220,14 @@ class DataFrame(object):
         self._refresh_index()
 
         assert((len(self._row_index),len(self._col_index))
-                == self.shape())
+                == self.shape)
 
         i_j = (self._row_query,self._col_query)
         if i_j == ((),()):
             i_j = (((None,None,None),),((None,None,None),))
         if (i_j) in self._cache:
             A = self._cache_fetch(i_j)
-            assert A.shape == self.shape()
+            assert A.shape == self.shape
             return A
 
         # If matrix is empty, raise error

@@ -5,6 +5,7 @@ import numpy as np
 import numpy.random as nprand
 from time import sleep
 from dreaml.transformations import *
+from dreaml.objective import SquareTest
 import numpy.linalg
 import scipy.linalg
 
@@ -62,7 +63,7 @@ class TestTransformation:
 
         M2 = np.zeros((3,5))
         
-        df[M2_path] = GD(loss.Toy,M2,None,y_df=df[M1_path],step_size=1)
+        df[M2_path] = GD(SquareTest,M2,df[M1_path],step_size=1)
         sleep(1)
         # df[M2_path].stop()
         assert np.allclose(df[M2_path].get_matrix(),df[M1_path].get_matrix())
@@ -76,10 +77,8 @@ class TestTransformation:
         df[batch2_path].set_matrix(M3)
 
         sleep(1)
-        print df[M2_path].shape()
-        print df[M1_path].shape()
-        assert df[M2_path].shape()==df[M1_path].shape()
-        assert df[M2_path].shape()==(3,9)
+        assert df[M2_path].shape==df[M1_path].shape
+        assert df[M2_path].shape==(3,9)
         assert np.allclose(df[M2_path].get_matrix(),df[M1_path].get_matrix())
 
         df[M2_path].stop()
@@ -101,7 +100,7 @@ class TestTransformation:
         df["yrow/","ycol/"] = DataFrame.from_matrix(np.arange(8).reshape(8,1))
         X_df = df["xrow/","xcol/"]
         y_df = df["yrow/","ycol/"]
-        df[path] = SGD(loss.Toy,close,X_df,y_df=y_df,batch_size=8,step_size=0.5)
+        df[path] = SGD(SquareTest,close,y_df,batch_size=8,step_size=0.5)
         sleep(1)
         df[path].stop()
         assert np.allclose(df[path].get_matrix(), y_df.get_matrix())

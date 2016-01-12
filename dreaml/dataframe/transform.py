@@ -32,7 +32,7 @@ class Transform(object):
         i_j = target._row_query,target._col_query
 
         # If the transform returns something, it should not be empty. 
-        if val.shape()[0] == 0 or val.shape()[1] == 0:
+        if val.shape[0] == 0 or val.shape[1] == 0:
             raise ValueError
 
         # TODO: Remove this code, and require the user to specify the reshaping
@@ -48,7 +48,7 @@ class Transform(object):
         if target.empty():
             target.set_dataframe(val)
         # If the target is non-empty and shapes are wrong, then extend it
-        elif val.shape() != target.shape():
+        elif val.shape != target.shape:
             for k_l in target._top_df._get_all_dependents(i_j):
                 target._top_df._propogate_stop(k_l)
 

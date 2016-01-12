@@ -10,7 +10,7 @@ class GD(ContinuousTransform):
 
     def continuous_func(self,target_df,Obj,x0,*args,**kwargs):
         self.niters += 1
-        res = Obj.g(target_df,*args,**kwargs)
+        res = Obj(target_df,*args,**kwargs).g()
 
         P = target_df.get_matrix()
 
@@ -19,5 +19,5 @@ class GD(ContinuousTransform):
     def init_func(self,target_df,Obj,x0,*args,**kwargs):
         rows,cols = Obj.structure(*args,**kwargs)
         target_df.set_structure(rows,cols)
-        if x0.shape == target_df.shape():
+        if x0.shape == target_df.shape:
             target_df.set_matrix(x0)

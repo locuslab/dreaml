@@ -16,9 +16,9 @@ class TestDataFrame:
                                     col_labels = ["a","b", "c"],
                                     row_labels = ["a","b"])
 
-        assert(df1.shape()==matrix1.shape)
-        assert(df2.shape()==matrix1.shape)
-        assert(df3.shape()==matrix1.shape)
+        assert(df1.shape==matrix1.shape)
+        assert(df2.shape==matrix1.shape)
+        assert(df3.shape==matrix1.shape)
         assert(df1.get_matrix().shape==matrix1.shape)
         assert(df2.get_matrix().shape==matrix1.shape)
         assert(df3.get_matrix().shape==matrix1.shape)
@@ -215,7 +215,7 @@ class TestDataFrame:
         print df[rows,col1].get_matrix()
         print matrix3
         print df[rows,col1]._row_index
-        assert (df[rows,col1].shape() == matrix3.shape)
+        assert (df[rows,col1].shape == matrix3.shape)
         assert (df[rows,col1].get_matrix() == matrix3).all()
 
 
@@ -319,7 +319,7 @@ class TestDataFrame:
         assert (df[row1,cols].get_matrix()==matrix3).all()
 
         # assert that the two matrices are equal
-        assert (df[row1,cols].shape()==df[row2,cols].shape())
+        assert (df[row1,cols].shape==df[row2,cols].shape)
         assert (df[row1,cols].get_matrix()==df[row2,cols].get_matrix()).all()
         
         # Attempt modifying a single entry instead of extending
@@ -359,7 +359,7 @@ class TestDataFrame:
 
         df[row2,col2].set_matrix(matrix2)
 
-        assert (df[rows,col1].shape()==(4,3))
+        assert (df[rows,col1].shape==(4,3))
         assert (df[rows,col1].get_matrix()==
                 np.vstack([matrix1,np.zeros((2,3))])).all()
 
@@ -390,11 +390,11 @@ class TestDataFrame:
         df = DataFrame()
         matrix1 = np.arange(8).reshape(4,2)
         df[row,col].set_matrix(matrix1)
-        assert(df[row,col].shape()==(4,2))
+        assert(df[row,col].shape==(4,2))
         rows = [str(v) for v in range(6)]
         cols = [str(v) for v in range(8)]
         df[row,col]._extend(rows,cols)
-        assert(df[row,col].shape()==(6,8))
+        assert(df[row,col].shape==(6,8))
         M = df[row,col].get_matrix()
         assert (M[0:4,0:2]==matrix1).all()
         assert (M[5:,:]==0).all()
@@ -407,7 +407,7 @@ class TestDataFrame:
         row2 = "row2/"
         col2 = "col2/"
         df[row2,col2]._extend(rows,cols)
-        assert (df[row2,col2].shape() == (6,8))
+        assert (df[row2,col2].shape == (6,8))
         print df[row2,col2].get_matrix()
         assert (df[row2,col2].get_matrix()==np.zeros((6,8))).all()
 

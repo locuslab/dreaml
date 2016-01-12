@@ -33,16 +33,16 @@ class SGD(ContinuousTransform):
                 transformation instead.")
         rows,cols = Obj.structure(*args,**kwargs)
         target_df.set_structure(rows,cols)
-        if x0.shape == target_df.shape():
+        if x0.shape == target_df.shape:
             target_df.set_matrix(x0)
 
     def continuous_func(self, target_df,Obj,x0,*args,**kwargs):
-        n = args[0].shape()[0]
+        n = args[0].shape[0]
 
         start = self.batch
         end = min(start+self.batch_size,n)
-        g = Obj.g(target_df,*[df[start:end,:] if isinstance(df,DataFrame)
-            else df for df in args],**kwargs)
+        g = Obj(target_df,*[df[start:end,:] if isinstance(df,DataFrame)
+            else df for df in args],**kwargs).g()
 
         Theta = target_df.get_matrix()
 
