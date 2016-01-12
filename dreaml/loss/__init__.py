@@ -16,3 +16,4 @@ limitations under the License.
 
 __version__ = "0.0.1"
 from loss import Softmax
+from loss import Square
