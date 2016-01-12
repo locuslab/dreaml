@@ -13,14 +13,20 @@ class Loss(object):
 
     @abstractmethod
     def f(self):
+        """ Evaluate the loss for each element and return the result as an
+        array of losses. """
         pass
 
     @abstractmethod
     def g(self):
+        """ Evaluate the gradient for each element and return the result as an
+        array of gradients. """
         pass
 
     @abstractmethod
     def h(self):
+        """ Evalute the Hessian for each element and return the result as an
+        array of Hessians. """
         pass
 
 
@@ -49,12 +55,12 @@ class Hinge(Loss):
     def h(self): return 0
 
 
-def Square(Loss):
-    def __init__(self, y_predcition, y_target):
+class Square(Loss):
+    def __init__(self, y_prediction, y_target):
         self.r = y_prediction - y_target
     def f(self): return 0.5*self.r**2
     def g(self): return self.r
-    def h(self): return 1.
+    def h(self): return np.ones(self.r.shape)
 
 
 class Softmax(Loss):
