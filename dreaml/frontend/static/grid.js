@@ -26,6 +26,7 @@ function indices_from_json(arr){
       var files = (get_files(obj))
 
       var subindices = indices_from_json(get_files(obj));
+      indices.push(prefix);
       indices = indices.concat(subindices.map(function(s){
                   return prefix.concat(s)
                 }));
@@ -88,9 +89,55 @@ function compress_indices(indices,index){
   return compressed;
 }
 
-var cur_data;
+var open_directories;
+
+function is_open(obj){
+
+}
+
+function parse_structure(structure,dir){
+  var list = [];
+  structure.forEach(function(obj,i){
+        if(is_directory(obj) && is_open(obj)){
+            var query = dir.concat("/"+get_query(obj));
+            list = list.concat(parse_structure(get_files(obj),query));
+        } else {
+            list.push(get_query(obj));
+        }
+  });
+  return list;
+}
+
+function get_label_function(labels){
+    return function(d,i){
+        return labels[i];
+    }
+}
+
+function get_label_end_function(labels){
+    return function(d,i){
+        if(labels[i].endsWith('/')){
+            return labels[i].split('/').reverse()[1]+'/';
+        } else{
+            return labels[i].split('/').pop(); 
+        }
+
+    }
+}
+
+function get_label_depth_function(labels){
+    return function(d,i){
+        var depth = labels[i].split('/').length;;
+        if(labels[i].endsWith('/')){
+            depth--;
+        }
+        console.log(depth);
+        return depth*10;
+    }
+}
 
 draw = function(err, data){ 
+  console.log(parse_structure(data.rows));
 
   var margin = {top: 100, right: 0, bottom: 0, left: 100},
       width = $("#grid").width()-margin.left,
@@ -116,6 +163,8 @@ draw = function(err, data){
 
     var row_labels = compress_indices(indices_from_json(rows),row_index);
     var col_labels = compress_indices(indices_from_json(cols),col_index);
+    // var row_labels = parse_structure(data.rows);
+    // var col_labels = parse_structure(data.cols);
 
     var n = row_labels.length,
         m = col_labels.length;
@@ -166,11 +215,12 @@ draw = function(err, data){
         .attr("x2", width);
 
     row.append("text")
-        .attr("x", -6)
+        .attr("x", get_label_depth_function(row_labels))
         .attr("y", y.rangeBand() / 2)
         .attr("dy", ".32em")
-        .attr("text-anchor", "end")
-        .text(function(d, i) { return row_labels[i]; });
+        .attr("id",get_label_function(row_labels))
+        // .attr("text-anchor", "end")
+        .text(get_label_end_function(row_labels));
 
     var column = svg.selectAll(".column")
         .data(matrix[0])
@@ -187,7 +237,7 @@ draw = function(err, data){
         .attr("y", x.rangeBand() / 2)
         .attr("dy", ".32em")
         .attr("text-anchor", "start")
-        .text(function(d, i) { return col_labels[i]; });
+        .text(get_label_end_function(col_labels));
 
     function row(row) {
       var cell = d3.select(this).selectAll(".cell")
@@ -218,10 +268,10 @@ draw = function(err, data){
 console.log("first")
 d3.json("json/structure", draw)
 
-window.setInterval(function(){
-  console.log("running!");
-  d3.json("json/structure", function(err,data){
-    draw(err,data);
-    $("#grid").find("svg:first-child").remove();
-  });    
-}, 3000);
+// window.setInterval(function(){
+//   console.log("running!");
+//   d3.json("json/structure", function(err,data){
+//     draw(err,data);
+//     $("#grid").find("svg:first-child").remove();
+//   });    
+// }, 3000);
