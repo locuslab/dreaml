@@ -246,54 +246,141 @@ class DataFrame(object):
         row_id = row_vals[0][0]
         col_id = col_vals[0][0]
 
+        if self._is_simple_query():
+            A = self._fast_get_matrix()
+        else: 
+        # This following code is slow, and should only be used when forming
+        # matrices from overly complicated queries. Nearly all cases should be
+        # handled by the above helper, which assumes a benign sequence of
+        # queries. 
+
         # If the entire dataframe exists in a single partition
         # return a subset of that partition
         # TODO: return an A of the type specified by type
-        if all(v[0]==row_id for v in row_vals) and \
-           all(v[0]==col_id for v in col_vals):
-            if (row_id,col_id) in self._partitions:
-                partition = self._partitions[row_id,col_id]
-                row_idx = [[v[1]] for v in row_vals]
-                col_idx = [v[1] for v in col_vals]
-                A = partition[row_idx,col_idx]
-            else:
+            if all(v[0]==row_id for v in row_vals) and \
+               all(v[0]==col_id for v in col_vals):
+                if (row_id,col_id) in self._partitions:
+                    partition = self._partitions[row_id,col_id]
+                    row_idx = [[v[1]] for v in row_vals]
+                    col_idx = [v[1] for v in col_vals]
+                    A = partition[row_idx,col_idx]
+                else:
+                    if typ == sp.csr_matrix:
+                        A = sp.csr_matrix((len(row_vals),len(col_vals)))
+                    else:
+                        A = np.zeros((len(row_vals),len(col_vals)))
+                    self._partitions[row_id,col_id] = A
+            else: 
                 if typ == sp.csr_matrix:
                     A = sp.csr_matrix((len(row_vals),len(col_vals)))
                 else:
                     A = np.zeros((len(row_vals),len(col_vals)))
-                self._partitions[row_id,col_id] = A
-        else: 
-            if typ == sp.csr_matrix:
-                A = sp.csr_matrix((len(row_vals),len(col_vals)))
-            else:
-                A = np.zeros((len(row_vals),len(col_vals)))
-            i=0
-            for row_id,row_idx in row_vals:
-                j=0
-                for col_id,col_idx in col_vals:
-                    if (row_id,col_id) in self._partitions:
-                        A[i,j] = self._partitions[row_id,col_id][row_idx,col_idx]
-                    else:
-                        if typ == sp.csr_matrix:
-                            self._partitions[row_id,col_id] = \
-                                sp.csr_matrix((self._row_counts[row_id],\
-                                               self._col_counts[col_id]))
+                i=0
+                for row_id,row_idx in row_vals:
+                    j=0
+                    for col_id,col_idx in col_vals:
+                        if (row_id,col_id) in self._partitions:
+                            A[i,j] = self._partitions[row_id,col_id][row_idx,col_idx]
                         else:
-                            self._partitions[row_id,col_id] = \
-                                np.zeros((self._row_counts[row_id],\
-                                         self._col_counts[col_id]))
-                    j+=1
-                i+=1
+                            if typ == sp.csr_matrix:
+                                self._partitions[row_id,col_id] = \
+                                    sp.csr_matrix((self._row_counts[row_id],\
+                                                   self._col_counts[col_id]))
+                            else:
+                                self._partitions[row_id,col_id] = \
+                                    np.zeros((self._row_counts[row_id],\
+                                             self._col_counts[col_id]))
+                        j+=1
+                    i+=1
 
-        if typ != None:
-            if typ == sp.csr_matrix and not sp.issparse(A):
-                A = A.toarray()
-            elif typ == np.ndarray and sp.issparse(A):
-                A = sp.csr_matrix(A)
+            if typ != None:
+                if typ == sp.csr_matrix and not sp.issparse(A):
+                    A = A.toarray()
+                elif typ == np.ndarray and sp.issparse(A):
+                    A = sp.csr_matrix(A)
 
         # Finally, store the cached matrix
         self._cache_add(i_j, A)
         return A
+
+    def _is_simple_query(self):
+        """ Return whether the query for this dataframe is simple. Current
+        queries designated as simple are single directory queries. 
+
+        Simple queries are contiguous blocks within partitions in their original
+        order, allowing for the use of slices as opposed to iteration over the
+        elements. 
+        """
+        return (len(self._row_query)==1 and
+                len(self._col_query)==1 and
+                isinstance(self._row_query[0],str) and
+                isinstance(self._col_query[0],str))
+
+    def _fast_get_matrix(self):
+        """ Return the underlying matrix for the dataframe, assuming the query
+        is simple for optimized retrieval. """
+        row_vals = self._row_index.values()
+        col_vals = self._col_index.values()
+
+        i,j = 0,0
+        (rp,ri) = row_vals[i]
+        (cp,ci) = col_vals[j]
+
+        (rp_end,ri_end) = row_vals[-1]
+        (cp_end,ci_end) = col_vals[-1]
+
+        row_list = []
+        while(rp != rp_end):
+            print rp
+            col_list = []
+            while(cp != cp_end):\
+                # p = self._partitions[rp,cp][ri:,ci:]
+                p = self._index_partition((rp,cp),
+                                          (slice(ri,None,None),
+                                           slice(ci,None,None)))
+                col_list.append(p)
+                j += p.shape[1]
+                (cp,ci) = col_vals[j]
+                assert(ci==0)
+            # p = self._partitions[rp,cp][ri:,ci:ci_end+1]
+            p = self._index_partition((rp,cp),
+                                      (slice(ri,None,None),
+                                       slice(ci,ci_end+1,None)))
+            col_list.append(p)
+            j = 0
+            (cp,ci) = col_vals[j]
+            row_list.append(col_list)
+            i += p.shape[0]
+            (rp,ri) = row_vals[i]
+        # last row
+        col_list = []
+        while(cp != cp_end):
+            # p = self._partitions[rp,cp][ri:ri_end+1,ci:]
+            p = self._index_partition((rp,cp),
+                                      (slice(ri,ri_end+1,None),
+                                       slice(ci,None,None)))
+            col_list.append(p)
+            j += p.shape[1]
+            (cp,ci) = col_vals[j]
+            assert(ci==0)
+        # p = self._partitions[rp,cp][ri:ri_end+1,ci:ci_end+1]
+        p = self._index_partition((rp,cp),
+                                  (slice(ri,ri_end+1,None),
+                                   slice(ci,ci_end+1,None)))
+        col_list.append(p)
+        row_list.append(col_list)
+
+        if len(row_list) == 1 and len(col_list) == 1:
+            return p
+        else:
+            return np.bmat(row_list)
+
+    def _index_partition(self,p_index,m_index):
+        if p_index in self._partitions:
+            return self._partitions[p_index][m_index]
+        else:
+            rp,cp = p_index
+            return np.zeros((self._row_counts[rp],self._col_counts[cp]))
 
     def set_structure(self,rows,cols):
         """ Sets the rows and columns labels of the DataFrame to the given lists
