@@ -56,6 +56,8 @@ class SoftmaxRegression(Objective):
 
     def f(self): 
         return np.mean(self.loss.f()) + self.reg/2*np.sum(self.theta**2)
+    def f_vec(self):
+        return self.loss.f() + self.reg/2*np.sum(self.theta**2)
     def g(self): 
         n = self.X.shape[0]
         return self.loss.g().T.dot(self.X)/n + self.reg*self.theta
