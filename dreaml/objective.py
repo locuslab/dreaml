@@ -43,10 +43,10 @@ class SquareTest(Objective):
 class SoftmaxRegression(Objective):
     def __init__(self,theta_df,X_df,y_df,reg):
         """ Combine Softmax loss with a linear model for Softmax regression. """
-        self.X = X_df.get_matrix()
+        self.X = X_df.get_matrix(readonly=True)
         self.theta = theta_df.get_matrix()
 
-        yt = y_df.get_matrix()
+        yt = y_df.get_matrix(readonly=True)
         yp = self.X.dot(self.theta.T)
         self.loss = Softmax(yp,yt)
         
