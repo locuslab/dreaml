@@ -4,7 +4,8 @@ from time import time,sleep
 from random import shuffle, randint
 
 from bokeh.plotting import figure
-from bokeh.io import output_server, cursession,curdoc,show,push,reset_output
+from bokeh.client import pull_session
+from bokeh.io import output_server,curdoc,reset_output
 from bokeh.embed import autoload_server
 from requests.exceptions import ConnectionError
 import numpy as np
@@ -56,8 +57,8 @@ class Plotter(ContinuousTransform):
                         legend=legend[i],
                         color=colors[i])
 
-        push()
-        tag = autoload_server(self.p,cursession())
+        self.session = push_session(self.p)
+        tag = autoload_server(self.p)
         target_df._top_df._plots.append(tag)
 
 
@@ -68,13 +69,12 @@ class Plotter(ContinuousTransform):
         sleep(interval)
 
 
-    def connect_to_server(self):
-        if cursession() == None:
-            try: 
-                output_server("dreaml")
-            except ConnectionError: 
-                reset_output()
-                print "Failed to connect to bokeh server"
+    # def connect_to_server(self):
+    #     try: 
+    #         push_session
+    #     except ConnectionError: 
+    #         reset_output()
+    #         print "Failed to connect to bokeh server"
 
     def update(self,y0,x0,legend):
         assert(len(y0)==len(x0))
@@ -83,4 +83,4 @@ class Plotter(ContinuousTransform):
             ds = renderer[0].data_source
             ds.data["y"].append(y0[i])
             ds.data["x"].append(x0[i])
-            cursession().store_objects(ds)
+            self.session.store_objects(ds)

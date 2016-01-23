@@ -7,7 +7,6 @@ from flask_nav import Nav
 from flask_nav.elements import Navbar, View
 
 # from bokeh.embed import autoload_server, components
-from bokeh.plotting import cursession
 
 nav = Nav()
 
