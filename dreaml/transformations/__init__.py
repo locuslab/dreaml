@@ -27,3 +27,7 @@ from permute import Permute
 from sgd import SGD
 from zeromean import ZeroMean
 from metrics import Metrics
+try:
+    from nn import NN
+except ImportError:
+    pass
