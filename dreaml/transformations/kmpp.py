@@ -2,6 +2,7 @@ from dreaml.dataframe.transform import ContinuousTransform
 from numpy.random import randint
 import numpy as np
 from scipy.sparse import csr_matrix
+from numpy.random import choice
 
 class KMPP(ContinuousTransform):
     """Run K-means plus plus."""
@@ -24,19 +25,38 @@ class KMPP(ContinuousTransform):
     def closest_centers(X,centers):
         n = X.shape[0]
         center_norms = (centers*centers).sum(axis=X.ndim-1)
-        return np.apply_along_axis(KMPP.min_sq_dist,
+        return np.apply_along_axis(KMPP.argmin_sq_dist,
                                    X.ndim-1,
                                    X,
                                    centers,
                                    center_norms)
 
     @staticmethod
-    def min_sq_dist(x,centers,center_norms):
+    def argmin_sq_dist(x,centers,center_norms):
         return np.argmin(-2*x.dot(centers.T)+center_norms)
 
     @staticmethod
     def initial_centers(X,k):
         """ Run K-means plus plus initialization """
-        # Currently random
-        return X[:k]
+        n = X.shape[0]
+        j = randint(n)
+        centers = np.zeros((k,X.shape[X.ndim-1]))
+        centers[0,:] = X[j,:]
+        indices = [j]
+        for i in range(1,k):
+            center_norms = (centers*centers).sum(axis=X.ndim-1)
+            d = np.apply_along_axis(KMPP.min_sq_dist,
+                                    X.ndim-1,
+                                    X,
+                                    centers[:i],
+                                    center_norms[:i])
+            d[indices] = 0
+            j = choice(n,p=d/d.sum())
+            centers[i,:] = X[j,:]
+            indices.append(j)
+        return centers
 
+
+    @staticmethod
+    def min_sq_dist(x,centers,center_norms):
+        return np.min((x*x).sum()-2*x.dot(centers.T)+center_norms)
