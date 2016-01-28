@@ -290,22 +290,12 @@ class Index(OrderedDict):
     def subset(self, i):
         """ For an indexing i, return the subset of the dataframe"""
         keys = self._get_keys(i)
+        data = list()
         if isinstance(i,str):
-            data = list()
-            truncated_keys = [k[len(i):] for k, key_end, e_index in keys]
-            for (tk,k) in zip(truncated_keys,keys):
-                key, key_end, new_index = k
-                if new_index is None:
-                    raise KeyError(key)
-
-                data.append((tk, dict.__getitem__(new_index, key_end)))
+            for (key, key_end, new_index) in keys:
+                data.append((key_end, dict.__getitem__(new_index, key_end)))
         else:
-            data = list()
-            for k in keys:
-                key, key_end, new_index = k
-                if new_index is None:
-                    raise KeyError(key)
-
+            for (key, key_end, new_index) in keys:
                 data.append((key, dict.__getitem__(new_index, key_end)))
         return Index(data)
 
@@ -361,11 +351,11 @@ class Index(OrderedDict):
                 self.cur_dir = obj
                 self.cur_index = 0
                 self.cur_dir_name = ""
+                self.cur_dir.refresh_index_list()
             def __iter__(self):
                 return self
             def next(self):
                 while 1:
-                    self.cur_dir.refresh_index_list()
                     # if there are keys left in this dir operate on the next one
                     if self.cur_index < len(self.cur_dir._list):
                         key = self.cur_dir._list[self.cur_index]
@@ -393,8 +383,11 @@ class Index(OrderedDict):
 
     def __delitem__(self, i):
         keys = self._get_keys(i)
-        if any(not self.key_exists(k, key_end, e_index) for k, key_end, e_index in keys):
-            raise KeyError(i)
+        for (k, key_end, e_index) in keys:
+            try:
+                dict.__getitem__(new_index, key)
+            except KeyError:
+                return False
         self.__delete_main(keys)
 
     def __delete_main(self, keys):
@@ -434,11 +427,12 @@ class Index(OrderedDict):
                                    old_key," and ", new_key)
 
             old_index, unused =  self.__find_enclosing_index(k)
-            if self.key_exists(k, old_file, old_index) is False:
-                import IPython
-                IPython.embed()
-            assert self.key_exists(k, old_file, old_index)
-            assert not self.key_exists(v, new_file, old_index)
+            dict.__getitem__(old_index, old_file)
+            try:
+                dict.__getitem__(old_index, old_file)
+                raise KeyError
+            except KeyError:
+                pass
             keys_repacked.append((old_file, new_file, old_index))
 
         for old_file, new_file, old_index in keys_repacked:
@@ -476,8 +470,28 @@ class Index(OrderedDict):
 
         exist_count = 0
         for k, key_end, e_index in keys:
-            if self.key_exists(k, key_end, e_index):
+            """
+            if key is a dir and the dir is there, True
+            if key is a dir + file and that is there, True
+            This code is duplicated in __setitem__ It was
+            better for performance to remove the function
+            call
+            """
+            if e_index is None:
+                continue
+
+            if key_end is None:
                 exist_count += 1
+                continue
+
+            try:
+                dict.__getitem__(e_index, key_end)
+                exist_count += 1
+                continue
+            except KeyError:
+                continue
+
+
         # if the keys all exist, set their corresponding values
         if exist_count == len(keys):
             if not isinstance(vals, list):
@@ -539,7 +553,11 @@ class Index(OrderedDict):
 
                 for k, file_end, e_index in keys:
                     assert isinstance(k,str)
-                    assert not self.key_exists(k, file_end, e_index)
+                    try:
+                        dict.__getitem__(e_index, file_end)
+                        raise KeyError
+                    except KeyError:
+                        pass
 
                     if before is not None:
                         if id(e_index) != id(before_index):
@@ -548,7 +566,12 @@ class Index(OrderedDict):
         elif isinstance(keys[0], str):
             if not keys_checked:
                 k, file_end, e_index = keys
-                assert(not self.key_exists(k, file_end, e_index))
+                try:
+                    dict.__getitem__(e_index, file_end)
+                    raise KeyError
+                except KeyError:
+                    pass
+
                 if before is not None:
                     if id(e_index) != id(before_index):
                         raise KeyError("key parent dir and before parent dir mismatch")
@@ -637,26 +660,26 @@ class Index(OrderedDict):
             return None, None
 
     def __contains__(self, item):
-        e_index, file_end = self.__find_enclosing_index(item)
-        return self.key_exists(item, file_end, e_index)
-
-    def key_exists(self, key, new_file, new_index):
+        new_index, key = self.__find_enclosing_index(item)
         """
          if key is a dir and the dir is there, True
          if key is a dir + file and that is there, True
+         This code is duplicated in __setitem__ It was
+         better for performance to remove the function
+         call
         """
         if new_index is None:
             return False
             
-        if new_file is None:
+        if key is None:
             return True
 
         try:
-            dict.__getitem__(new_index, new_file)
+            dict.__getitem__(new_index, key)
             return True
         except KeyError:
             return False
-        
+
     def __find_enclosing_index(self, key):
         """
         Return an Index and a file from the key
