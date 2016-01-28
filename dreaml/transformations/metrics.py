@@ -20,7 +20,7 @@ class Metrics(ContinuousTransform):
 
     def init_func(self,target_df,metrics_list,*args,**kwargs):
         target_df.set_structure(target_df.rows(),self.metrics_names)
-        target_df.set_matrix(np.zeros((target_df.shape()[0],len(metrics_list))))
+        target_df.set_matrix(np.zeros((target_df.shape[0],len(metrics_list))))
 
     def continuous_func(self,target_df,metrics_list,*args,**kwargs):
         metrics = target_df.get_matrix()

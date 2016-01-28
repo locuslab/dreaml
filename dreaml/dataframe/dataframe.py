@@ -331,7 +331,6 @@ class DataFrame(object):
 
         row_list = []
         while(rp != rp_end):
-            print rp
             col_list = []
             while(cp != cp_end):\
                 # p = self._partitions[rp,cp][ri:,ci:]
@@ -349,7 +348,11 @@ class DataFrame(object):
             col_list.append(p)
             j = 0
             (cp,ci) = col_vals[j]
-            row_list.append(col_list)
+            if sp.issparse(p):
+                row_list.append(sp.hstack(col_list))
+            else:
+                row_list.append(np.hstack(col_list))
+            # row_list.append(col_list)
             i += p.shape[0]
             (rp,ri) = row_vals[i]
         # last row
@@ -368,12 +371,18 @@ class DataFrame(object):
                                   (slice(ri,ri_end+1,None),
                                    slice(ci,ci_end+1,None)))
         col_list.append(p)
-        row_list.append(col_list)
-
-        if len(row_list) == 1 and len(col_list) == 1:
-            return p
+        if sp.issparse(p):
+            row_list.append(sp.hstack(col_list))
+            return sp.vstack(row_list)
         else:
-            return np.bmat(row_list)
+            row_list.append(np.hstack(col_list))
+            return np.vstack(row_list)
+        # assert(len(row_list) > 0 and len(col_list) > 0)
+        # if len(row_list) == 1 and len(col_list) == 1:
+        #     return p
+        # else:
+        #     print row_list
+        #     return np.asarray(np.bmat(row_list))
 
     def _index_partition(self,p_index,m_index):
         if p_index in self._partitions:
@@ -1008,10 +1017,13 @@ class DataFrame(object):
             col_val = 0
             for (col_id,col_idx) in self._col_index[cols]:
                 # set it element-wise
-                # if (row_id,col_id) not in self._partitions:
-                #     self._partitions[row_id,col_id] = \
-                #         np.zeros(self._row_counts[row_id],
-                #                  self._col_counts[col_id])
+                if (row_id,col_id) not in self._partitions:
+                    self._partitions[row_id,col_id] = \
+                        np.zeros((self._row_counts[row_id],
+                                 self._col_counts[col_id]))
+                assert((row_id,col_id) in self._partitions)
+                assert((row_idx,col_idx) < self._partitions[row_id,col_id].shape)
+                assert((row_val,col_val) < M.shape)
                 self._partitions[row_id,col_id] \
                                 [row_idx,col_idx] \
                                 = M[row_val,col_val]
