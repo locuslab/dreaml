@@ -1,4 +1,9 @@
-from index import Index
+from constants import *
+if WHICH_INDEX == "index":
+    from index import Index
+elif WHICH_INDEX == "hindex":
+    from hIndex import Index
+
 import itertools
 import operator
 import numpy as np

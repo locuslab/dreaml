@@ -144,7 +144,7 @@ class Index(OrderedDict):
             slice_start = i.start
             slice_stop = i.stop
             slice_step = i.step if i.step else 1
-            
+
             if isinstance(i.start, int):
                 self.refresh_index_list()
                 """
@@ -320,6 +320,7 @@ class Index(OrderedDict):
             link_next[0] = l
             dict.__setitem__(self, k, v)
             link_prev = l
+            self._list = None
             
 
 
