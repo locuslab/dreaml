@@ -125,14 +125,13 @@ function get_label_end_function(labels){
     }
 }
 
-function get_label_depth_function(labels){
+function get_label_depth_function(labels,scale){
     return function(d,i){
         var depth = labels[i].split('/').length;;
         if(labels[i].endsWith('/')){
             depth--;
         }
-        console.log(depth);
-        return depth*10;
+        return depth*scale;
     }
 }
 
@@ -168,6 +167,9 @@ draw = function(err, data){
 
     var n = row_labels.length,
         m = col_labels.length;
+
+    // Spacing for levels in the hierarchical view
+    var spacing = 10;
 
     // Compute index per entry.
     row_labels.forEach(function(row, i) {
@@ -215,7 +217,8 @@ draw = function(err, data){
         .attr("x2", width);
 
     row.append("text")
-        .attr("x", get_label_depth_function(row_labels))
+        .attr("depth", get_label_depth_function(row_labels,1))
+        .attr("x", get_label_depth_function(row_labels,spacing))
         .attr("y", y.rangeBand() / 2)
         .attr("dy", ".32em")
         .attr("id",get_label_function(row_labels))
@@ -233,7 +236,8 @@ draw = function(err, data){
         .attr("x1", -width);
 
     column.append("text")
-        .attr("x", 6)
+        .attr("depth", get_label_depth_function(col_labels,1))
+        .attr("x", get_label_depth_function(col_labels,spacing))
         .attr("y", x.rangeBand() / 2)
         .attr("dy", ".32em")
         .attr("text-anchor", "start")
@@ -263,6 +267,91 @@ draw = function(err, data){
     function mouseout() {
       d3.selectAll("text").classed("active", false);
     }
+
+    // This function computes start/stops for each hierachical line needed
+    function make_lines(text_coords, ordinal){
+      var path = [];
+      for(var i=0; i<text_coords.length; i++){
+        rt = text_coords[i];
+        end = text_coords.length;
+        for(var j=i+1; j<text_coords.length; j++){
+          if (text_coords[j]["depth"] <= rt["depth"]){
+            end = j;
+            break;
+          }
+        }
+        if (end-1>i){
+          var startp = ordinal(i) + ordinal.rangeBand()/2;
+          if(end>=text_coords.length){
+            var endp = ordinal(end-1) + ordinal.rangeBand();
+          } else {
+            var endp = ordinal(end);
+          }
+          path.push([
+            {"x":rt["x"],"y":startp},
+            {"x":rt["x"],"y":endp}]);
+        }
+      }
+      return path;
+    }
+
+    // Extract x,y,depth information from the text svg elements
+    var row_text_coords = d3.selectAll("g .row text")[0].map(function(d){
+      return {
+        "x":d.attributes.x.value,
+        "y":d.attributes.y.value,
+        "depth":d.attributes.depth.value
+      }
+    });
+    // Calculate the max width of an svg element to translate it left
+    var widths = (d3.selectAll("g .row text")[0].map(function(d){
+          return d.getBBox().width +(1+parseInt(d.attributes.depth.value))*spacing;
+        }));
+    var max_width = (Math.max(...widths));
+    var row_path = make_lines(row_text_coords,y);
+    for(i in row_path){
+      row_path[i][0]["x"]-=max_width;
+      row_path[i][1]["x"]-=max_width;
+    }
+
+    d3.selectAll("g .row text").attr("x",function(d,i){
+        return get_label_depth_function(row_labels,spacing)(d,i)-max_width
+    });
+
+
+    var column_text_coords = d3.selectAll("g .column text")[0].map(function(d){
+      return {
+        "x":d.attributes.x.value,
+        "y":d.attributes.y.value,
+        "depth":d.attributes.depth.value
+      }
+    });
+    var column_path = make_lines(column_text_coords,x);
+
+    var lineFunction = d3.svg.line()
+                       .x(function(d) {return d["x"]})
+                       .y(function(d) {return d["y"]})
+                       .interpolate("linear");
+
+    for(var i in row_path){
+      var path = row_path[i]
+      svg.append("path")
+         .attr("d",lineFunction(path))
+         .attr("stroke","gray")
+         .attr("stroke-width",1)
+         .attr("fill","none");
+    }
+    for(var i in column_path){
+      var path = column_path[i]
+      svg.append("path")
+         .attr("d",lineFunction(path))
+         .attr("stroke","gray")
+         .attr("stroke-width",1)
+         .attr("fill","none").attr("transform", function(d, i) { 
+            return "translate(" + x(i) + ")rotate(-90)"; 
+          });
+    }
+
 };
 
 console.log("first")
