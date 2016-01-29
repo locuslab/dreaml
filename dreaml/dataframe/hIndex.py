@@ -449,9 +449,8 @@ class Index(OrderedDict):
             """
             if key is a dir and the dir is there, True
             if key is a dir + file and that is there, True
-            This code is duplicated in __setitem__ It was
-            better for performance to remove the function
-            call
+            This code is duplicated from key_exists_ It was
+            better for performance to remove the function call
             """
             if e_index is None:
                 continue
@@ -483,7 +482,7 @@ class Index(OrderedDict):
             self._full_key_list = None
             if not isinstance(i, list) and len(keys) == 1:
                 keys = keys[0]
-            self.__insert_main(keys, vals, True)
+            self.__insert_main(keys, vals)
         else:
             raise ValueError("All keys must exist or none can exist")
 
@@ -492,64 +491,52 @@ class Index(OrderedDict):
     def insert(self, keys, values, before=None):
         self._full_key_list = None
 
-        if type(keys) is list:
-            packed_keys = list()
-            for k in keys:
-                e_index, file_end = self.__find_enclosing_index(k)
-                packed_keys.append((k, file_end, e_index))
-        else:
-            e_index, file_end = self.__find_enclosing_index(keys)
-            packed_keys = (keys, file_end, e_index)
-
-        self.__insert_main(packed_keys, values, False, before)
-
-    def __insert_main(self, keys, values, keys_checked, before=None):
-        """ 
-        Insert a key/value pair before 'before' in the dict.
-        See __setitem__
-        """
+        before_file = None
         ## check that  if key is dir, val is Index and vice versa
-          #      if type(v) is not Index:
-          #          raise KeyError("Insert has directory path but no file name")
-          #      if len(k) < 1 or k[-1] is not '/':
-          #          raise KeyError("Value is an Index but key is not a dir")
         if before is not None:
             if not isinstance(before, str):
                 raise KeyError("before must be a single key")
             before_index, before_file = self.__find_enclosing_index(before)
 
-        if isinstance(keys, list):
-            if not keys_checked:
-                if not isinstance(values, list):
-                    raise ValueError("If keys is a list, vals must also be a list")
-                if not len(keys) == len(values):
-                    raise ValueError("Found ", len(keys), " keys and ", len(values), 
-                                     "vals")
-
-                for k, file_end, e_index in keys:
-                    assert isinstance(k,str)
-                    assert not self.key_exists(k, file_end, e_index)
-
-                    if before is not None:
-                        if id(e_index) != id(before_index):
-                            raise KeyError("key parent dir and before parent dir mismatch")
-
-        elif isinstance(keys[0], str):
-            if not keys_checked:
-                k, file_end, e_index = keys
-                assert(not self.key_exists(k, file_end, e_index))
-
+        if type(keys) is list:
+            packed_keys = list()
+            if not isinstance(values, list):
+                raise ValueError("If keys is a list, vals must also be a list")
+            if not len(keys) == len(values):
+                raise ValueError("Found ", len(keys), " keys and ", len(values), 
+                                 "vals")
+            for k in keys:
+                assert isinstance(k,str)
+                e_index, file_end = self.__find_enclosing_index(k)
+                assert not self.key_exists(k, file_end, e_index)
+                
                 if before is not None:
                     if id(e_index) != id(before_index):
                         raise KeyError("key parent dir and before parent dir mismatch")
+                packed_keys.append((k, file_end, e_index))
+        else:
+            e_index, file_end = self.__find_enclosing_index(keys)
+            assert(not self.key_exists(keys[0], file_end, e_index))
+            if before is not None:
+                if id(e_index) != id(before_index):
+                    raise KeyError("key parent dir and before parent dir mismatch")
+            packed_keys = (keys, file_end, e_index)
 
+        self.__insert_main(packed_keys, values, before_file)
+
+    def __insert_main(self, keys, values, before_file=None):
+        """ 
+        Insert a key/value pair before 'before_file' in the dict.
+        See __setitem__
+        """
+        if isinstance(keys[0], str):
             # so that zip works correctly below
             keys = [keys]
             values = [values]
 
             link_prev = None
             link_next = None
-        if before is None:
+        if before_file is None:
             link_prev = self._OrderedDict__root[0]
             link_next = link_prev[1]
 
@@ -565,7 +552,7 @@ class Index(OrderedDict):
             if file_end[-1] == '/':
                 files_count -= 1
 
-            if before is None:
+            if before_file is None:
                 link_prev = new_index._OrderedDict__root[0]
                 link_next = link_prev[1]
             else:
