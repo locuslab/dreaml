@@ -347,47 +347,27 @@ class Index(OrderedDict):
     def __iter__(self):
         class iterator(object):
             def __init__(self, obj):
-                self.dir_stack = list()
+                #self.dir_stack = list()
                 self.cur_dir = obj
                 self.cur_index = 0
-                self.cur_dir_name = ""
-                self.cur_dir.refresh_index_list()
+                #self.cur_dir_name = ""
+                #self.cur_dir.refresh_index_list()
+                self.cur_dir.refresh_full_key_list()
             def __iter__(self):
                 return self
             def next(self):
-                while 1:
-                    # if there are keys left in this dir operate on the next one
-                    if self.cur_index < len(self.cur_dir._list):
-                        key = self.cur_dir._list[self.cur_index]
-                        self.cur_index += 1
-                        if key[-1:] == "/":
-                            self.dir_stack.append((self.cur_dir, self.cur_index))
-                            self.cur_index = 0
-                            self.cur_dir = dict.__getitem__(self.cur_dir, key)
-                            self.cur_dir_name += key
-                        else:
-                            return self.cur_dir_name + key
-                    # if there are no keys left go back up one level or end
-                    else:
-                        if len(self.dir_stack) > 0:
-                            (self.cur_dir, self.cur_index) = self.dir_stack.pop()
-                            last_part = self.cur_dir_name.rfind('/', 0, -2)
-                            if last_part >= 0:
-                                self.cur_dir_name = self.cur_dir_name[:last_part+1]
-                            else:
-                                self.cur_dir_name = ""
-                        else:
-                            raise StopIteration
+                if self.cur_index == len(self.cur_dir._full_key_list):
+                    raise StopIteration
+                ret = self.cur_dir._full_key_list[self.cur_index]
+                self.cur_index += 1
+                return ret
 
         return iterator(self)
 
     def __delitem__(self, i):
         keys = self._get_keys(i)
-        for (k, key_end, e_index) in keys:
-            try:
-                dict.__getitem__(new_index, key)
-            except KeyError:
-                return False
+        if any(not self.key_exists(k, key_end, e_index) for k, key_end, e_index in keys):
+            raise KeyError(i)
         self.__delete_main(keys)
 
     def __delete_main(self, keys):
@@ -427,12 +407,8 @@ class Index(OrderedDict):
                                    old_key," and ", new_key)
 
             old_index, unused =  self.__find_enclosing_index(k)
-            dict.__getitem__(old_index, old_file)
-            try:
-                dict.__getitem__(old_index, old_file)
-                raise KeyError
-            except KeyError:
-                pass
+            assert self.key_exists(k, old_file, old_index)
+            assert not self.key_exists(v, new_file, old_index)
             keys_repacked.append((old_file, new_file, old_index))
 
         for old_file, new_file, old_index in keys_repacked:
@@ -496,7 +472,6 @@ class Index(OrderedDict):
         if exist_count == len(keys):
             if not isinstance(vals, list):
                 vals = [vals]
-            l = list()
             for k,v in zip(keys, vals):
                 key_name, key_end, e_index = k
                 OrderedDict.__setitem__(e_index, key_end, v)
@@ -553,11 +528,7 @@ class Index(OrderedDict):
 
                 for k, file_end, e_index in keys:
                     assert isinstance(k,str)
-                    try:
-                        dict.__getitem__(e_index, file_end)
-                        raise KeyError
-                    except KeyError:
-                        pass
+                    assert not self.key_exists(k, file_end, e_index)
 
                     if before is not None:
                         if id(e_index) != id(before_index):
@@ -566,11 +537,7 @@ class Index(OrderedDict):
         elif isinstance(keys[0], str):
             if not keys_checked:
                 k, file_end, e_index = keys
-                try:
-                    dict.__getitem__(e_index, file_end)
-                    raise KeyError
-                except KeyError:
-                    pass
+                assert(not self.key_exists(k, file_end, e_index))
 
                 if before is not None:
                     if id(e_index) != id(before_index):
@@ -660,22 +627,22 @@ class Index(OrderedDict):
             return None, None
 
     def __contains__(self, item):
-        new_index, key = self.__find_enclosing_index(item)
+        e_index, file_end = self.__find_enclosing_index(item)
+        return self.key_exists(item, file_end, e_index)
+
+    def key_exists(self, key, new_file, new_index):
         """
          if key is a dir and the dir is there, True
          if key is a dir + file and that is there, True
-         This code is duplicated in __setitem__ It was
-         better for performance to remove the function
-         call
         """
         if new_index is None:
             return False
             
-        if key is None:
+        if new_file is None:
             return True
 
         try:
-            dict.__getitem__(new_index, key)
+            dict.__getitem__(new_index, new_file)
             return True
         except KeyError:
             return False
@@ -767,62 +734,9 @@ class Index(OrderedDict):
         return ret
 
     def __get_key_from_offset(self, count):
-        """
         if self._full_key_list is None:
             self.refresh_full_key_list()
         return self._full_key_list[count]
-        """
-        # This code walks the keyspace. In theory it scales better
-        # since it doesn't build an array of all of the keys and 
-        # index into that. However the code is much more complex
-        # and runs several times slower
-
-        if count < 0:
-            count = self._full_key_list_count + count
-
-        dir_stack = list()
-        cur_index = self
-        cur_offset = 0
-        cur_dir_name = ""
-        cur_index.refresh_index_list()
-        while 1:
-            if cur_offset < len(cur_index._list):
-                key = cur_index._list[cur_offset]
-                #cur_offset += 1 
-                # if this is a dir, go into it
-                if cur_index._list[cur_offset][-1] == "/":
-                    temp_index = dict.__getitem__(cur_index, cur_index._list[cur_offset])
-
-                    # if the dir subtree doesn't have enough keys
-                    # just skip the whole thing without going into it
-                    if count > temp_index._full_key_list_count:
-                        count -= temp_index._full_key_list_count
-                        cur_offset += 1
-                        continue
-
-                    dir_stack.append((cur_index, cur_offset + 1))
-                    cur_dir_name += cur_index._list[cur_offset]
-                    cur_offset = 0
-                    cur_index = temp_index
-                    cur_index.refresh_index_list()
-
-                # if this is not a dir walk one step
-                else:
-                    if count == 0:
-                        return cur_dir_name + cur_index._list[cur_offset]
-                    cur_offset += 1
-                    count -= 1
-            # if there are no keys left go back up one level or end
-            else:
-                if len(dir_stack) > 0:
-                    (cur_index, cur_offset) = dir_stack.pop()
-                    last_part = cur_dir_name.rfind('/', 0, -2)
-                    if last_part >= 0:
-                        cur_dir_name = cur_dir_name[:last_part+1]
-                    else:
-                        cur_dir_name = ""
-                else:
-                    raise KeyError(count)
 
     def __str__(self):
         print "calling str"
