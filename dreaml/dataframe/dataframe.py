@@ -870,15 +870,22 @@ class DataFrame(object):
         row_prefix,col_prefix = self.pwd()
 
         if isinstance(i,str):
-            rows = [row_prefix+i+k for k in val._row_index.keys()]
+            if i.endswith('/'):
+                rows = [row_prefix+i+k for k in val._row_index.keys()]
+            else: 
+                rows = [i]
         elif len(self._row_index.subset(i))==0:
             rows = [row_prefix+k for k in val._row_index.keys()]
         # If the rows already exist, and we have a non-string query, then just
         # pull existing row labels
         else:
             rows = [row_prefix+k for k in self._row_index.subset(i).keys()]
+
         if isinstance(j,str):
-            cols = [col_prefix+j+k for k in val._col_index.keys()]
+            if i.endswith('/'):
+                cols = [col_prefix+j+k for k in val._col_index.keys()]
+            else: 
+                cols = [j]
         elif len(self._col_index.subset(j))==0:
             cols = [col_prefix+k for k in val._col_index.keys()]
         else:
@@ -904,6 +911,7 @@ class DataFrame(object):
         if no_cols_exist: 
             col_id = top_df._add_cols(cols)
             col_ids = [col_id]
+            print "adding cols"+str(cols)
         else: 
             col_ids = OrderedDict.fromkeys([v[0] \
                 for v in top_df._col_index[cols]]).keys()
@@ -911,6 +919,7 @@ class DataFrame(object):
         if no_rows_exist:
             row_id = top_df._add_rows(rows)
             row_ids = [row_id]
+            print "adding rows"+str(rows)
         else: 
             row_ids = OrderedDict.fromkeys([v[0] \
                 for v in top_df._row_index[rows]]).keys()
