@@ -520,6 +520,7 @@ class DataFrame(object):
         }
         return json.dumps(out)
 
+    @property
     def T(self):
         """ Return the Transformation that generates this DataFrame. 
 
