@@ -911,7 +911,6 @@ class DataFrame(object):
         if no_cols_exist: 
             col_id = top_df._add_cols(cols)
             col_ids = [col_id]
-            print "adding cols"+str(cols)
         else: 
             col_ids = OrderedDict.fromkeys([v[0] \
                 for v in top_df._col_index[cols]]).keys()
@@ -919,7 +918,6 @@ class DataFrame(object):
         if no_rows_exist:
             row_id = top_df._add_rows(rows)
             row_ids = [row_id]
-            print "adding rows"+str(rows)
         else: 
             row_ids = OrderedDict.fromkeys([v[0] \
                 for v in top_df._row_index[rows]]).keys()
