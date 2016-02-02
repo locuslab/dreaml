@@ -10,18 +10,15 @@ class KMPP(ContinuousTransform):
     __module__ = "dreaml.transformations"
 
     def init_func(self,target_df,X_df,k):
-        M = KMPP.initial_centers(X_df.get_matrix(),k)
+        X = X_df.get_matrix()
+        M = KMPP.initial_centers(X,k)
+        self.ohe = KMPP.get_ohe_labels(X,M)
         target_df.set_matrix(M)
 
     def continuous_func(self,target_df,X_df,k):
         """ Run standard K-means """
-        sleep(10)
         X = X_df.get_matrix()
-        n = X.shape[0]
-        labels = KMPP.closest_centers(X,target_df.get_matrix())
-        self.ohe = csr_matrix((np.ones(n),(np.arange(n),labels)),
-                              shape=(n,k),
-                              dtype=bool)
+        self.ohe = KMPP.get_ohe_labels(X,target_df.get_matrix())
         target_df.set_matrix(self.ohe.T*X/(np.asarray(self.ohe.sum(axis=0)).reshape(k,1)))
 
     @staticmethod
@@ -63,3 +60,12 @@ class KMPP(ContinuousTransform):
     @staticmethod
     def min_sq_dist(x,centers,center_norms):
         return np.min((x*x).sum()-2*x.dot(centers.T)+center_norms)
+
+    @staticmethod
+    def get_ohe_labels(X,M):
+        n = X.shape[0]
+        k = M.shape[0]
+        labels = KMPP.closest_centers(X,M)
+        return csr_matrix((np.ones(n),(np.arange(n),labels)),
+                          shape=(n,k),
+                          dtype=bool)
