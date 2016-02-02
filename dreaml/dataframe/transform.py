@@ -109,3 +109,33 @@ class ContinuousTransform(Transform):
 
 Transform.register(BatchTransform)
 Transform.register(ContinuousTransform)
+
+from bokeh.client import push_session
+from bokeh.io import curdoc
+from bokeh.embed import autoload_server
+
+class FigureTransform(ContinuousTransform):
+    def apply(self,target_df):
+        self.init_func(target_df, *self.args, **self.kwargs)
+
+        self.session = push_session(curdoc())
+        tag = autoload_server(self.p,session_id=self.session.id)
+        target_df._top_df._plots.append(tag)
+
+        thread = Thread(target = self._continuous_wrapper, args=(target_df,))
+        thread.start()
+        return thread
+
+    def init_func(self,target_df,*args,**kwargs):
+        self.p = self.create_figure(target_df,*args,**kwargs)
+
+    @abstractmethod
+    def create_figure(self, target_df, *args, **kwargs):
+        pass
+
+    def continuous_func(self,target_df,*args,**kwargs):
+        self.update(self.p)
+
+    @abstractmethod
+    def update(self, target_df, *args, **kwargs):
+        pass
