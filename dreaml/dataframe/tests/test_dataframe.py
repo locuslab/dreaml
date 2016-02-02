@@ -8,6 +8,16 @@ class TestDataFrame:
         self.item_count = 8
         assert self.item_count >= 4
 
+    def test_single_set(self):
+        df = DataFrame()
+        M = np.arange(4).reshape(2,2)
+        df["row/1","col/1"] = 0
+        df["row/1","col/2"] = 1
+        df["row/2","col/1"] = 2
+        df["row/2","col/2"] = 3
+        assert(df["row/","col/"].shape==(2,2))
+        assert(df["row/","col/"].get_matrix() == M).all()
+
     def test_from_matrix(self):
         matrix1 = np.ones((2,3))
         df1 = DataFrame.from_matrix(matrix1, row_labels = ["a","b"])
