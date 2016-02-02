@@ -173,6 +173,9 @@ class DataFrame(object):
             row_labels: (optional) list of labels for the rows of the matrix.
             col_labels: (optional) list of labels for the columns of the matrix.
         """
+        if isinstance(M,(int,float,long,complex)):
+            M = np.array([[M]])
+
         if self.empty():
             self.set_dataframe(DataFrame.from_matrix(M,
                                                      row_labels=row_labels,
