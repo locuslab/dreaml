@@ -829,6 +829,15 @@ class DataFrame(object):
         # If the input is a Transform, evaluate the transform and update the
         # computational graph
         if isinstance(val,Transform):
+            # If the query is a file and not a directory, initialize it if it
+            # doesn't already exist
+            if (isinstance(i,str) and not i.endswith('/') and 
+                i not in top_df._row_index):
+                top_df._add_rows([i])
+            if (isinstance(j,str) and not j.endswith('/') and 
+                j not in top_df._col_index):
+                top_df._add_cols([j])
+
             # # Right now, run the init and refresh the transform's variables
             # # on every step
             target_df = self._reindex(node)
