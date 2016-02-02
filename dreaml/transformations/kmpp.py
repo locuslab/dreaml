@@ -3,6 +3,7 @@ from numpy.random import randint
 import numpy as np
 from scipy.sparse import csr_matrix
 from numpy.random import choice
+from time import sleep
 
 class KMPP(ContinuousTransform):
     """Run K-means plus plus."""
@@ -10,16 +11,18 @@ class KMPP(ContinuousTransform):
 
     def init_func(self,target_df,X_df,k):
         M = KMPP.initial_centers(X_df.get_matrix(),k)
-        print M
         target_df.set_matrix(M)
 
     def continuous_func(self,target_df,X_df,k):
         """ Run standard K-means """
+        sleep(10)
         X = X_df.get_matrix()
         n = X.shape[0]
         labels = KMPP.closest_centers(X,target_df.get_matrix())
-        ohe = csr_matrix((np.ones(n),(np.arange(n),labels)),shape=(n,k))
-        target_df.set_matrix(ohe.T*X/(np.asarray(ohe.sum(axis=0)).reshape(k,1)))
+        self.ohe = csr_matrix((np.ones(n),(np.arange(n),labels)),
+                              shape=(n,k),
+                              dtype=bool)
+        target_df.set_matrix(self.ohe.T*X/(np.asarray(self.ohe.sum(axis=0)).reshape(k,1)))
 
     @staticmethod
     def closest_centers(X,centers):
