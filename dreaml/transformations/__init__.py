@@ -28,7 +28,3 @@ from sgd import SGD
 from zeromean import ZeroMean
 from metrics import Metrics
 from kmpp import KMPP
-try:
-    from nn import NN
-except ImportError:
-    pass

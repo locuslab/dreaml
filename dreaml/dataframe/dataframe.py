@@ -8,7 +8,7 @@ from collections import OrderedDict
 import networkx as nx
 from os.path import commonprefix
 from time import time
-from threading import Lock
+from threading import Lock, Thread
 import json
 
 class DataFrame(object):
@@ -991,7 +991,8 @@ class DataFrame(object):
             for k_l in self._get_implicit_dependents(node):
                 if self._graph.node[k_l]["status"] != self.STATUS_BLUE:
                     self._propogate_start(k_l)
-        if node in self._graph.node:
+        if (node in self._graph.node and
+            self._graph.node[node]["status"] == self.STATUS_BLUE):
             self._graph.node[node]["status"] = self.STATUS_GREEN
 
     def __delitem__(self,i_j):
@@ -1085,6 +1086,22 @@ class DataFrame(object):
 
     def stop_all(self):
         pass
+
+    def go(self):
+        i_j = self.hash()
+        if (self.is_transform() and i_j not in self._threads and 
+           self._graph.node[i_j]["status"] == self.STATUS_RED):
+            # Note: move this to transform.py
+            t = Thread(target = self.T._continuous_wrapper, args=(self,))
+            self._threads[i_j] = t
+            self._graph.node[i_j]["status"] = self.STATUS_GREEN
+            t.start()
+
+    def is_transform(self):
+        if self.hash() in self._graph.node:
+            return self._graph.node[self.hash()]["transform"] is not None
+        else: 
+            return False
 
     def _add_to_graph(self,i_j, status,transform=None):
         """ Add a node to the graph and add all of its explicit edges.
@@ -1232,8 +1249,7 @@ class DataFrame(object):
         #             top_df._partitions[row_id,col_id] \
         #                 = np.zeros((top_df._row_counts[row_id], \
         #                             top_df._col_counts[col_id]))
-        if self.hash() in top_df._graph and \
-            top_df._graph.node[self.hash()]["transform"] is not None:
+        if self.hash() in top_df._graph and self.is_transform():
             top_df._refresh(top_df._graph.node[self.hash()]["transform"])
         top_df._df_cache_flush(self.hash()) 
         # If we update params_df here, then it won't update any parents of 
