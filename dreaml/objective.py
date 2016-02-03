@@ -46,9 +46,9 @@ class SoftmaxRegression(Objective):
         self.X = X_df.get_matrix(readonly=True)
         self.theta = theta_df.get_matrix()
 
-        yt = y_df.get_matrix(readonly=True)
-        yp = self.X.dot(self.theta.T)
-        self.loss = Softmax(yp,yt)
+        self.yt = y_df.get_matrix(readonly=True)
+        self.yp = self.X.dot(self.theta.T)
+        self.loss = Softmax(self.yp,self.yt)
         
         self.X_df = X_df
         self.y_df = y_df
@@ -65,6 +65,10 @@ class SoftmaxRegression(Objective):
         # Needs to be averaged and also regularized
         return self.loss.h()
 
+    def err(self):
+        d = self.X.ndim-1
+        return (self.yt.argmax(axis=d)!=self.yp.argmax(axis=d))
+
     @staticmethod
     def structure(X_df,y_df,reg):
-        return y_df.cols(), X_df.rows()
+        return y_df.cols(), X_df.cols()
