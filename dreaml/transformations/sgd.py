@@ -32,9 +32,12 @@ class SGD(ContinuousTransform):
                 none are necessary, consider using the gradient descent (GD)\
                 transformation instead.")
         rows,cols = Obj.structure(*args,**kwargs)
-        target_df.set_structure(rows,cols)
-        if x0.shape == target_df.shape:
-            target_df.set_matrix(x0)
+        if target_df.empty():
+            target_df.set_structure(rows,cols)
+            if x0.shape == target_df.shape:
+                target_df.set_matrix(x0)
+        else: 
+            target_df.set_structure(rows,cols)
 
     def continuous_func(self, target_df,Obj,x0,*args,**kwargs):
         n = args[0].shape[0]
