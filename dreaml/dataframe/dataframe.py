@@ -990,6 +990,7 @@ class DataFrame(object):
         if no_rows_exist or no_cols_exist:
             for k_l in self._get_implicit_dependents(node):
                 if self._graph.node[k_l]["status"] != self.STATUS_BLUE:
+                    print str(k_l)+" has status "+self._graph.node[k_l]["status"]
                     self._propogate_start(k_l)
         if (node in self._graph.node and
             self._graph.node[node]["status"] == self.STATUS_BLUE):
@@ -1312,7 +1313,8 @@ class DataFrame(object):
     def _propogate_stop(self,i_j):
         """ Stop all transformations dependent on node i_j """
         # If node is already stopped, return
-        if self._graph.node[i_j]["status"] == self.STATUS_RED:
+        if (self._graph.node[i_j]["status"] == self.STATUS_RED or
+           self._graph.node[i_j]["status"] == self.STATUS_BLUE):
             return
 
         implicit_dependents = self._get_implicit_dependents(i_j)
@@ -1347,9 +1349,12 @@ class DataFrame(object):
             # set self to green
             self._graph.node[i_j]["status"] = self.STATUS_GREEN
             # recurse on all children
-            for v in implicit_dependents:
-                if self._graph.node[v]["status"] == self.STATUS_RED:
-                    self._propogate_start(v,ignore)
+            # Only check implicit descendents if this current node was actually
+            # rerun. 
+            if self._graph.node[i_j]["transform"] is not None:
+                for v in implicit_dependents:
+                    if self._graph.node[v]["status"] == self.STATUS_RED:
+                        self._propogate_start(v,ignore)
 
             for v in explicit_dependents:
                 if self._graph.node[v]["status"] == self.STATUS_RED:
