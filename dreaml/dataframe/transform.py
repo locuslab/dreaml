@@ -137,5 +137,5 @@ class FigureTransform(ContinuousTransform):
         self.update(self.p)
 
     @abstractmethod
-    def update(self, target_df, *args, **kwargs):
+    def update(self,p):
         pass
