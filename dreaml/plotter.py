@@ -66,6 +66,8 @@ class Plotter(ContinuousTransform):
                         legend=[],interval=1,colors=[],**kwargs):
         (y0,x0) = f(**kwargs)
         self.update(y0,x0,legend)
+        target_df["x/","val/"].set_matrix(np.array(x0).reshape(1,len(x0)))
+        target_df["y/","val/"].set_matrix(np.array(y0).reshape(1,len(y0)))
         sleep(interval)
 
 
