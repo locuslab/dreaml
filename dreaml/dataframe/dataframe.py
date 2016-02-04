@@ -990,7 +990,6 @@ class DataFrame(object):
         if no_rows_exist or no_cols_exist:
             for k_l in self._get_implicit_dependents(node):
                 if self._graph.node[k_l]["status"] != self.STATUS_BLUE:
-                    print str(k_l)+" has status "+self._graph.node[k_l]["status"]
                     self._propogate_start(k_l)
         if (node in self._graph.node and
             self._graph.node[node]["status"] == self.STATUS_BLUE):
