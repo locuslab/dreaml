@@ -252,6 +252,8 @@ class DataFrame(object):
         if self._is_simple_query():
             A = self._fast_get_matrix()
         else: 
+            print "not a simple query"
+            print self.hash()
         # This following code is slow, and should only be used when forming
         # matrices from overly complicated queries. Nearly all cases should be
         # handled by the above helper, which assumes a benign sequence of
@@ -314,14 +316,37 @@ class DataFrame(object):
         order, allowing for the use of slices as opposed to iteration over the
         elements. 
         """
-        return (len(self._row_query)==1 and
-                len(self._col_query)==1 and
-                isinstance(self._row_query[0],str) and
-                isinstance(self._col_query[0],str))
+        if (len(self._row_query)==0 and len(self._col_query)==0):
+            return True
+        if (len(self._row_query)==1 and
+            len(self._col_query)==1 and
+            isinstance(self._row_query[0],str) and
+            isinstance(self._col_query[0],str)):
+            return True
+
+        row_str_slice = (all(isinstance(q,str) for q in self._row_query[:-1])
+                         and self._is_encoded_slice(self._row_query[-1]))
+        col_str_slice = (all(isinstance(q,str) for q in self._col_query[:-1])
+                         and self._is_encoded_slice(self._col_query[-1]))
+        if row_str_slice and col_str_slice:
+            return True
+        return False
+
+    @staticmethod
+    def _is_encoded_slice(s):
+        return isinstance(s,tuple) and len(s)==3
 
     def _fast_get_matrix(self):
         """ Return the underlying matrix for the dataframe, assuming the query
         is simple for optimized retrieval. """
+
+        if ((self._row_query[:-1],self._col_query[:-1]) in self._cache
+            and self._is_encoded_slice(self._row_query[-1])
+            and self._is_encoded_slice(self._col_query[-1])):
+            i_j = (self._row_query[:-1],self._col_query[:-1])
+            s1 = self._tuple_element_to_query(self._row_query[-1])
+            s2 = self._tuple_element_to_query(self._col_query[-1])
+            return self._cache_fetch(i_j)[s1,s2]
         row_vals = self._row_index.values()
         col_vals = self._col_index.values()
 
@@ -373,6 +398,10 @@ class DataFrame(object):
         p = self._index_partition((rp,cp),
                                   (slice(ri,ri_end+1,None),
                                    slice(ci,ci_end+1,None)))
+        
+        if len(row_list) == 0 and len(col_list) == 0:
+            return p
+
         col_list.append(p)
         if sp.issparse(p):
             row_list.append(sp.hstack(col_list))
@@ -707,6 +736,19 @@ class DataFrame(object):
         raise ValueError
 
     @staticmethod
+    def _tuple_element_to_query(i):
+        """ Convert a query to a tuple used to hash into dictionaries. 
+            str -> str
+            int -> int
+            (a,b,c) -> slice(a,b,c) 
+        """
+        if isinstance(i,str) or isinstance(i,int):
+            return i
+        elif isinstance(i,tuple) and len(i)==3:
+            return slice(*i)
+        raise ValueError
+
+    @staticmethod
     def _tuple_element_to_string(i):
         """ Convert a tuple element to a string that visually matches
         the query typed by the user """
@@ -986,6 +1028,7 @@ class DataFrame(object):
             # row and column indexes, since the df_cache logic uses the
             # indices to determine overlap. 
             self._df_cache_flush(node)
+
         # self._cache_add(node,M)
         if no_rows_exist or no_cols_exist:
             for k_l in self._get_implicit_dependents(node):

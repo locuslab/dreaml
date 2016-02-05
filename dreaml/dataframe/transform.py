@@ -86,6 +86,11 @@ class BatchTransform(Transform):
 
 
 class ContinuousTransform(Transform):
+
+    def __init__(self, *args, **kwargs):
+        self.delay = kwargs.pop('delay',0)
+        super(ContinuousTransform,self).__init__(*args,**kwargs)
+
     def apply(self, target_df):
         self.init_func(target_df, *self.args, **self.kwargs)
         thread = Thread(target = self._continuous_wrapper, args=(target_df,))
@@ -103,9 +108,18 @@ class ContinuousTransform(Transform):
     def _continuous_wrapper(self, target_df):
         i_j = (target_df._row_query,target_df._col_query)
         graph = target_df._top_df._graph
-        while(graph.node[i_j]["status"] is not target_df.STATUS_RED):
-            # If this child is not blocked then we can run the function
-            self._apply_function_to(target_df,self.continuous_func)
+        if self.delay > 0:
+            while(graph.node[i_j]["status"] is not target_df.STATUS_RED):
+                self._apply_function_to(target_df,self.continuous_func)
+                sleep(self.delay)
+        else: 
+            while(graph.node[i_j]["status"] is not target_df.STATUS_RED):
+                self._apply_function_to(target_df,self.continuous_func)
+
+    def _eval_init_func(self,target):
+        return self.init_func(target,*self.args,**self.kwargs)
+    def _eval_continuous_func(self,target):
+        return self.continuous_func(target,*self.args,**self.kwargs)
 
 Transform.register(BatchTransform)
 Transform.register(ContinuousTransform)
