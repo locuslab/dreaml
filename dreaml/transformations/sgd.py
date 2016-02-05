@@ -39,6 +39,11 @@ class SGD(ContinuousTransform):
         else: 
             target_df.set_structure(rows,cols)
 
+        # reinsert into cache
+        for df in args:
+            if isinstance(df,DataFrame):
+                df.get_matrix()
+
     def continuous_func(self, target_df,Obj,x0,*args,**kwargs):
         n = args[0].shape[0]
 
