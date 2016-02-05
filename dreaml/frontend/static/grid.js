@@ -57,13 +57,14 @@ function compress_indices(indices,index){
   compressed.push(indices[0]);
   var last_partition = index[indices[0]];
   var cur_partition_size = 1;
+  var dots = String.fromCharCode(183)+String.fromCharCode(183)+String.fromCharCode(183);
   for (var i=1; i<indices.length; i++){
     var next_partition = index[indices[i]];
     // If its a different partition then add it
     if(last_partition !== next_partition){
       var prev = compressed[compressed.length-1]
       if (cur_partition_size > 2) {
-        var key = prefix(prev)+"...";
+        var key = prefix(prev)+dots;
         compressed.push(key);
         index[key] = last_partition;
       }
@@ -79,7 +80,7 @@ function compress_indices(indices,index){
   }
   if (cur_partition_size > 2) {
     var prev = compressed[compressed.length-1]
-    var key = prefix(prev)+"...";
+    var key = prefix(prev)+dots;
     compressed.push(key);
     index[key] = last_partition;
   }
@@ -138,7 +139,7 @@ function get_label_depth_function(labels,scale){
 draw = function(err, data){ 
   console.log(parse_structure(data.rows));
 
-  var margin = {top: 100, right: 0, bottom: 0, left: 100},
+  var margin = {top: 250, right:50, bottom: 0, left: 150},
       width = $("#grid").width()-margin.left,
       height = $("#grid").height()-margin.top;
 
@@ -169,7 +170,7 @@ draw = function(err, data){
         m = col_labels.length;
 
     // Spacing for levels in the hierarchical view
-    var spacing = 10;
+    var spacing = 15;
 
     // Compute index per entry.
     row_labels.forEach(function(row, i) {
@@ -223,7 +224,8 @@ draw = function(err, data){
         .attr("dy", ".32em")
         .attr("id",get_label_function(row_labels))
         // .attr("text-anchor", "end")
-        .text(get_label_end_function(row_labels));
+        .text(get_label_end_function(row_labels))
+        .style("font-size","34px");
 
     var column = svg.selectAll(".column")
         .data(matrix[0])
@@ -241,7 +243,10 @@ draw = function(err, data){
         .attr("y", x.rangeBand() / 2)
         .attr("dy", ".32em")
         .attr("text-anchor", "start")
-        .text(get_label_end_function(col_labels));
+        .text(get_label_end_function(col_labels))
+        .style("font-size","34px");
+      //   .attr("transform", function(d, i) { return "rotate(90)translate(-10)rotate(-90)translate (27)rotate (45)";
+      // });
 
     function row(row) {
       var cell = d3.select(this).selectAll(".cell")
@@ -357,10 +362,10 @@ draw = function(err, data){
 console.log("first")
 d3.json("json/structure", draw)
 
-// window.setInterval(function(){
-//   console.log("running!");
-//   d3.json("json/structure", function(err,data){
-//     draw(err,data);
-//     $("#grid").find("svg:first-child").remove();
-//   });    
-// }, 3000);
+window.setInterval(function(){
+  console.log("running!");
+  d3.json("json/structure", function(err,data){
+    draw(err,data);
+    $("#grid").find("svg:first-child").remove();
+  });    
+}, 3000);

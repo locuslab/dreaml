@@ -1,5 +1,6 @@
 $.getJSON('json/graph',function(data){
   console.log(data)
+  var gray = '#555555'
   var cy = cytoscape({
     container: document.getElementById('cy'),
     elements: data,
@@ -8,9 +9,12 @@ $.getJSON('json/graph',function(data){
       selector: 'node',
       style: {
         'label':'data(id)',
-        'text-opacity': 0.3,
-        'background-color': '#888888',
-        'text-valign': 'bottom'
+        'text-opacity': 1,
+        'background-color': gray,
+        'text-valign': 'bottom',
+      'text-outline-color':'#FFFFFF',
+      'text-outline-opacity': 0.3,
+      'text-outline-width': '2px'
       }
     },
     {
@@ -24,7 +28,7 @@ $.getJSON('json/graph',function(data){
             return 'none';
           }
         },
-        'target-arrow-color': '#888888',
+        'target-arrow-color': gray,
         'line-style': function(ele) {
           if(ele.data('type')==="explicit"){
             return 'solid';
@@ -32,7 +36,7 @@ $.getJSON('json/graph',function(data){
             return 'dashed';
           }
         },
-        'line-color': '#888888',
+        'line-color': gray,
         'display': function(ele) {
           if(ele.data('display')===true){
             return 'element';
