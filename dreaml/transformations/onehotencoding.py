@@ -6,7 +6,6 @@ import numpy as np
 class OneHotEncoding(BatchTransform):
     def func(self,target_df,Y_df):
         Y = Y_df.get_matrix().squeeze()
-        print Y.shape
         n=Y.shape[0]
         d = {}
         for y in Y:
