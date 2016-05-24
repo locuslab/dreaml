@@ -23,8 +23,9 @@ class Softmax(Objective):
         P = Softmax._multiclass_prob(theta,X)
         n = X.shape[0]
         penalty = reg/2*np.power(theta,2).sum()
-
+        print P[y]
         return -np.log([ P[y[i,0],i] for i in np.arange(n)])+penalty
+        # return -np.log(P[y])+penalty
 
     @staticmethod
     def g(theta_df,X_df,y_df,reg=0.01):

@@ -89,6 +89,7 @@ class ContinuousTransform(Transform):
 
     def __init__(self, *args, **kwargs):
         self.delay = kwargs.pop('delay',0)
+        self.max_iters = kwargs.pop('max_iters',None)
         super(ContinuousTransform,self).__init__(*args,**kwargs)
 
     def apply(self, target_df):
@@ -108,9 +109,19 @@ class ContinuousTransform(Transform):
     def _continuous_wrapper(self, target_df):
         i_j = (target_df._row_query,target_df._col_query)
         graph = target_df._top_df._graph
-        if self.delay > 0:
-            while(graph.node[i_j]["status"] is not target_df.STATUS_RED):
-                self._apply_function_to(target_df,self.continuous_func)
+        while(graph.node[i_j]["status"] is not target_df.STATUS_RED):
+            # Apply the function
+            self._apply_function_to(target_df,self.continuous_func)
+
+            # Increment iteration counter if max_iters is set, and break if
+            # threshold is exceeded. 
+            if self.max_iters != None:
+                niters += 1
+                if niters >= self.max_iters:
+                    graph.node[i_j]["status"] = target_df.STATUS_RED
+
+            # If delay requested, sleep for the desired amount of time. 
+            if self.delay > 0:
                 sleep(self.delay)
         else: 
             while(graph.node[i_j]["status"] is not target_df.STATUS_RED):

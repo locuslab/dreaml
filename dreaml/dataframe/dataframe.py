@@ -1146,6 +1146,21 @@ class DataFrame(object):
         else: 
             return False
 
+    def status(self):
+        if self.is_transform():
+            if self.hash() in self._graph.node:
+                return self._graph.node[self.hash()]["status"]
+            else:
+                raise ReferenceError("Transformation does not " \
+                                     "exist in the computational graph. ")
+        else:
+            raise UserWarning("Asked for status of non continuous " \
+                              "transform block.")
+
+    def is_running(self):
+        return (self.is_transform() 
+            and self._graph.node[self.hash()]["status"] != self.STATUS_RED)
+
     def _add_to_graph(self,i_j, status,transform=None):
         """ Add a node to the graph and add all of its explicit edges.
         Explicit edges are dependences from the arguments of the transform to
