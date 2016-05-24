@@ -63,3 +63,14 @@ def construct_frontend(df=None):
             return '{}'
 
     return frontend
+
+    def shutdown_server():
+        func = request.environ.get('werkzeug.server.shutdown')
+        if func is None:
+            raise RuntimeError('Not running with the Werkzeug Server')
+        func()
+
+    @frontend.route('/shutdown', methods=['POST'])
+    def shutdown():
+        shutdown_server()
+        return 'Server shutting down...'

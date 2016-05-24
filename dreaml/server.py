@@ -35,4 +35,8 @@ def _start_empty():
     df.web_thread = Thread(target=f, args=(df,))
     df.web_thread.start()
 
-    
+def kill(df):
+    if hasattr(df,"web_thread"):
+        requests.post('http://localhost:5000/shutdown')
+    else:
+        print "server not running!"
