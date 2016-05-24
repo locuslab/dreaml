@@ -109,6 +109,7 @@ class ContinuousTransform(Transform):
     def _continuous_wrapper(self, target_df):
         i_j = (target_df._row_query,target_df._col_query)
         graph = target_df._top_df._graph
+        niters = 0
         while(graph.node[i_j]["status"] is not target_df.STATUS_RED):
             # Apply the function
             self._apply_function_to(target_df,self.continuous_func)

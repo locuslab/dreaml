@@ -51,7 +51,6 @@ class SGD(ContinuousTransform):
         end = min(start+self.batch_size,n)
         g = Obj(target_df,*[df[start:end,:] if isinstance(df,DataFrame)
             else df for df in args],**kwargs).g()
-        print g
 
         Theta = target_df.get_matrix()
 
