@@ -229,6 +229,11 @@ class DataFrame(object):
         if i_j == ((),()):
             i_j = (((None,None,None),),((None,None,None),))
         if (i_j) in self._cache:
+            # A readonly cache entry can become read-write, but not the other
+            # way around (otherwise, read-write entries would not have their
+            # changes persist after eviction)
+            if self._cache_readonly(i_j):
+                self._cache_set_readonly(i_j, readonly)
             A = self._cache_fetch(i_j)
             assert A.shape == self.shape
             return A
@@ -305,7 +310,7 @@ class DataFrame(object):
                     A = sp.csr_matrix(A)
 
         # Finally, store the cached matrix
-        self._cache_add(i_j, A)
+        self._cache_add(i_j, A, readonly=readonly)
         return A
 
     def _is_simple_query(self):
@@ -915,7 +920,10 @@ class DataFrame(object):
 
         # First check the cache for a fast set. 
         if node in self._cache:
-            self._cache_add(node,M)
+            if self._cache_readonly(node) == True:
+                raise UserWarning("Attempting to set a readonly cache block. " \
+                                  "The result will not persist. ")
+            self._cache_add(node,M,readonly=self._cache_readonly(node))
             return
 
         # If query is a directory or if the dataframe has no existing entries, 
@@ -1459,25 +1467,31 @@ class DataFrame(object):
         cached data through to do the underlying DataFrame. """
         self._cache_lock.acquire()
         if (i_j in self._cache):
-            M = self._cache_fetch(i_j)
-            old_rows = self._cache_rows(i_j)
-            old_cols = self._cache_cols(i_j)
-            self._cache_del(i_j)
+            if(self._cache_readonly(i_j)):
+                # If readonly, then just remove entry from cache
+                self._cache_del(i_j)
+            else:
+                # Otherwise we need to rerwite to the underlying df
+                M = self._cache_fetch(i_j)
+                old_rows = self._cache_rows(i_j)
+                old_cols = self._cache_cols(i_j)
+                self._cache_del(i_j)
 
-            # Remove from cache before setting in dataframe
-            i,j = i_j
-            assert(len(i) == len(j))
-            df = self._reindex(i_j)        
-            df._write_matrix_to(M,old_rows,old_cols)
+                # Remove from cache before setting in dataframe
+                i,j = i_j
+                assert(len(i) == len(j))
+                df = self._reindex(i_j)        
+                df._write_matrix_to(M,old_rows,old_cols)
         self._cache_lock.release()
 
-    def _cache_add(self,i_j,A):
+    def _cache_add(self,i_j,A,readonly=False):
         """ Add the matrix A for node i_j into the cache """
         df = self._reindex(i_j)
         self._cache_lock.acquire()
         self._cache[i_j] = (A,
                             df._row_index.keys(),
-                            df._col_index.keys())
+                            df._col_index.keys(),
+                            readonly)
         self._cache_lock.release()
 
     def _cache_del(self,i_j):
@@ -1498,6 +1512,14 @@ class DataFrame(object):
         """ Retrieve the cols for node i_j corresponding to the the cached
         matrix """
         return self._cache[i_j][2]
+
+    def _cache_readonly(self,i_j):
+        return self._cache[i_j][3]
+
+    def _cache_set_readonly(self, i_j, tf):
+        self._cache_lock.acquire()
+        self._cache[i_j] = self._cache[i_j][:3] + (tf,)
+        self._cache_lock.release()
 
     def _df_cache_del(self,i_j):
         """ Delete the entry for i_j in the df cache """

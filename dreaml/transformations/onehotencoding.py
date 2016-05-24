@@ -5,7 +5,7 @@ import numpy as np
 
 class OneHotEncoding(BatchTransform):
     def func(self,target_df,Y_df):
-        Y = Y_df.get_matrix().squeeze()
+        Y = Y_df.get_matrix(readonly=True).squeeze()
         n=Y.shape[0]
         d = {}
         for y in Y:

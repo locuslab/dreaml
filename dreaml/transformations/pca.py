@@ -10,13 +10,13 @@ class PCA(BatchTransform):
         """ Project onto the PCA basis """
         # PCA function needs a df to store eigen basis in
         df = target_df._top_df
-        X_pca = X_pca_df.get_matrix()
+        X_pca = X_pca_df.get_matrix(readonly=True)
         X_mean = np.mean(X_pca,axis=0)
         # pca_basis_location = (_auto_dir+"features/",_auto_dir+"pca_basis/")
         # df[pca_basis_location] = PCABasis(X_pca_df,num_bases)
         # v = df[pca_basis_location].get_matrix()
         self.v = self.pca_basis(X_pca,num_bases)
-        X_full = X_full_df.get_matrix()
+        X_full = X_full_df.get_matrix(readonly=True)
 
         col_labels = [str(i) for i in range(num_bases)]
         target_df.set_matrix((X_full-X_mean).dot(self.v),
