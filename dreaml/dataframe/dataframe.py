@@ -916,7 +916,7 @@ class DataFrame(object):
         # assert(len(val._partitions)==1)
         # M = val._partitions[0,0]
         # TODO: slow... should not have to fetch the matriix to set. 
-        M = val.get_matrix()
+        M = val.get_matrix(readonly=self._cache_readonly(i_j))
 
         # First check the cache for a fast set. 
         if node in self._cache:
@@ -1514,7 +1514,9 @@ class DataFrame(object):
         return self._cache[i_j][2]
 
     def _cache_readonly(self,i_j):
-        return self._cache[i_j][3]
+        if i_j in self._cache:
+            return self._cache[i_j][3]
+        return False
 
     def _cache_set_readonly(self, i_j, tf):
         self._cache_lock.acquire()
