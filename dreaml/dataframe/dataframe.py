@@ -232,7 +232,7 @@ class DataFrame(object):
             # A readonly cache entry can become read-write, but not the other
             # way around (otherwise, read-write entries would not have their
             # changes persist after eviction)
-            if self._cache_readonly(i_j):
+            if self._cache_readonly((i_j)):
                 self._cache_set_readonly(i_j, readonly)
             A = self._cache_fetch(i_j)
             assert A.shape == self.shape
@@ -916,7 +916,7 @@ class DataFrame(object):
         # assert(len(val._partitions)==1)
         # M = val._partitions[0,0]
         # TODO: slow... should not have to fetch the matriix to set. 
-        M = val.get_matrix(readonly=self._cache_readonly(i_j))
+        M = val.get_matrix(readonly=self._cache_readonly(node))
 
         # First check the cache for a fast set. 
         if node in self._cache:
