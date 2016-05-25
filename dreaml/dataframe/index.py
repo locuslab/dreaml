@@ -24,6 +24,7 @@ class Index(OrderedDict):
         if not all(isinstance(k,str) for k in self):
             raise ValueError("All keys must be strings")
         self._list = None
+        self._subset_cache = {}
 
 
     def iter_slice(self, s):
@@ -200,8 +201,15 @@ class Index(OrderedDict):
         """ For an indexing i, return the subset of the dataframe"""
         keys = self._get_keys(i)
         if isinstance(i,str):
-            truncated_keys = [k[len(i):] for k in keys]
-            return Index([(tk, dict.__getitem__(self,k)) for (tk,k) in zip(truncated_keys,keys)])
+            # if False:
+            if i in self._subset_cache:
+                return self._subset_cache[i]
+            else:
+                truncated_keys = [k[len(i):] for k in keys]
+                ss = Index([(tk, dict.__getitem__(self,k)) for (tk,k) 
+                            in zip(truncated_keys,keys)])
+                self._subset_cache[i] = ss
+                return ss
         else:
             return Index([(k, dict.__getitem__(self,k)) for k in keys])
 
@@ -231,6 +239,7 @@ class Index(OrderedDict):
         for k in keys:
             OrderedDict.__delitem__(self, k)
 
+        self._subset_cache = {}
         self._list = None
 
     def relabel(self, keys):
@@ -256,6 +265,8 @@ class Index(OrderedDict):
         If i is a singleton or a list, and if none of the keys exists in the 
         Index, then we add (append) them to the Index.
         """
+        # For now, just reset the entire cache
+        self._subset_cache = {}
         keys = self._get_keys(i)
 
         if isinstance(i, list) or len(keys) > 1:
