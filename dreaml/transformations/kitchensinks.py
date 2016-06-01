@@ -8,7 +8,7 @@ _auto_dir = "auto/"
 
 class KitchenSinks(BatchTransform):
     def func(self,target_df,X_df,num_features=1):
-        X = X_df.get_matrix()
+        X = X_df.get_matrix(readonly=True)
         n_trials = int(X.shape[0]**1.5)
         I = random.randint(0, X.shape[0], n_trials)
         deltI = random.randint(1, X.shape[0], n_trials)
