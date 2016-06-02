@@ -1228,6 +1228,7 @@ class DataFrame(object):
     def _get_implicit_dependents(self,i_j):
         """ Return all nodes implicitly dependent on i_j """
         i,j = i_j
+        print "getting implicit dependents of "+str(i_j)
         (rows,cols) = self._get_full_rows_and_cols(i_j, ignore_df_cache=True)
 
         dependents = set()
