@@ -231,8 +231,6 @@ class TestIndex:
             ["value" + str(s) for s in range(self.item_count)]
         # print new_index.keys()
         new_index.relabel({"key0" : "new_key0", "key1": "new_key1"})
-        print new_index._list
-        print new_index._full_key_list
         assert("new_key0" in new_index)
         assert("new_key1" in new_index)
         # print new_index.keys()
@@ -241,13 +239,11 @@ class TestIndex:
 
         new_index.relabel({"new_key0": "key0", "new_key1" : "key1"})
         # print new_index.keys()
-        print len(new_index.keys()), self.item_count
         assert len(new_index.keys()) == self.item_count
         assert new_index["key0"] == "new_value0"
         assert new_index[["key" + str(s) for s in range(self.item_count)][1:]] == \
             ["value" + str(s) for s in range(self.item_count)][1:]
         del new_index
-
         pass
 
     def test_index_hierarchy(self):
