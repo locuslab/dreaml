@@ -21,7 +21,7 @@ class Index(OrderedDict):
 
     def __init__(self, *args):
         # a list of the keys in this Index (including the dirs)
-        self._list = None
+        self._list = []
 
         # a list of all files in the tree (no dirs)
         # we lazy update this for performance reasons
@@ -39,7 +39,6 @@ class Index(OrderedDict):
         if not all(isinstance(k,str) for k in self):
             raise ValueError("All keys must be strings")
 
-        self.refresh_index_list()
         self.refresh_full_key_list()
         self._nfiles = len(self._full_key_list)
 
@@ -121,14 +120,6 @@ class Index(OrderedDict):
 
         return ret, offset
 
-
-    def refresh_index_list(self):
-        """ This rebuilds the self._list if the list of items changes. """
-        if self._list == None:
-            self._list = list()
-            for k in OrderedDict.__iter__(self):
-                self._list.append(k)
-
     def refresh_full_key_list(self):
         self._refresh_full_key_list_main("")
 
@@ -137,7 +128,6 @@ class Index(OrderedDict):
         ret = list()
         # self_ret is stored here and does not have the prefix
         self_ret = list()
-        self.refresh_index_list()
 
         if self._list is None:
             self._full_key_list = self_ret
@@ -366,7 +356,6 @@ class Index(OrderedDict):
             def next(self):
                 while 1:
                     # if there are keys left in this dir operate on the next one
-                    self.cur_dir.refresh_index_list()
                     if self.cur_dir._list is not None and self.cur_index < len(self.cur_dir._list):
                         key = self.cur_dir._list[self.cur_index]
                         self.cur_index += 1
@@ -420,7 +409,6 @@ class Index(OrderedDict):
                 #self._list = None
                 if self._list != None:
                     self._list.remove(k)
-                #self.refresh_index_list()
                 self._full_key_list = None
             
         self._nfiles -= files_count
@@ -429,7 +417,9 @@ class Index(OrderedDict):
 
     def relabel(self, keys):
         """ Relabel a collection of keys (a dictionary of old -> new. 
-        This does not allow moving things between different directories """
+        This does not allow moving things between different directories.
+        This code seems useless. The purpose of relabeling is to move around
+        files across directories. """
 
         assert(all(self.key_exists(k) and not self.key_exists(v) \
                        for k,v in keys.iteritems()))
@@ -448,8 +438,7 @@ class Index(OrderedDict):
             old_index._OrderedDict__map[new_file] = l
             l[2] = new_file 
             dict.__setitem__(old_index, new_file, dict.pop(old_index, old_file))
-        self._list = None
-        # self.refresh_index_list()
+        self._list = [k for k in OrderedDict.__iter__(self)]
         self._full_key_list = None
 
     def __setitem__(self, i, vals):
@@ -479,8 +468,12 @@ class Index(OrderedDict):
                 raise ValueError("Found ", len(keys), " keys and ", len(vals), 
                                  "vals")
 
+        # if none of the keys exist, insert them
+        if not any(self.key_exists(k) for k in keys):
+            self._full_key_list = None
+            self.__insert_main(i, vals, True)
         # if the keys all exist, set their corresponding values
-        if all(self.key_exists(k) for k in keys):
+        elif all(self.key_exists(k) for k in keys):
             if not isinstance(vals, list):
                 vals = [vals]
             l = list()
@@ -490,19 +483,12 @@ class Index(OrderedDict):
                 # since the keys are unchanged we don't need to update the
                 #e_index._list = None
                 # key caches
-                #e_index.refresh_index_list()
                 #e_index._full_key_list = None
                 #self._full_key_list = None
 
-        # if none of the keys exist, insert them
-        elif not any(self.key_exists(k) for k in keys):
-            self._full_key_list = None
-            self.__insert_main(i, vals, True)
         else:
             raise ValueError("All keys must exist or none can exist")
 
-        #self._list = None
-        #self.refresh_index_list()
         return vals
 
 
@@ -516,13 +502,17 @@ class Index(OrderedDict):
         See __setitem__
         """
         if before is not None:
+            i = self._list.index(before)
             link_prev, link_next = None, None
             if not isinstance(before, str):
                 raise KeyError("before must be a single key")
             before_parent, before_file = self.__get_parent_dir_and_file(before)
         else:
+            i = len(self._list)
             link_prev = self._OrderedDict__root[0]
             link_next = link_prev[1]
+
+        new_list = self._list[:i]
 
         if isinstance(keys, list):
             if not keys_checked:
@@ -551,15 +541,16 @@ class Index(OrderedDict):
 
             # so that zip works correctly below
             kvs = [(keys,values)]
+            keys = [keys]
             files_count = 1
         else: 
             kvs = zip(keys,values)
             files_count = len(keys)
 
         for k,v in kvs:
+            kpart1, kpart2 = self.__get_dir_component(k)
             if k[-1] is '/':
                 files_count -= 1
-            kpart1, kpart2 = self.__get_dir_component(k)
             # a dir key and an Index value is allowed
             if kpart2 is not None and len(kpart2) == 0 and type(v) is not Index:
                 raise KeyError("Insert has directory path but no file name")
@@ -587,11 +578,12 @@ class Index(OrderedDict):
                         next_index._path = kpart1
                         dict.__setitem__(self, kpart1, next_index)
                         next_index.__insert_main(kpart2, v, True, before)
+                        # if we create a new directory, add it to the list
                     else:
                         # this case only happens if key is a dir and value is an Index
                         dict.__setitem__(self, kpart1, v)
+                    new_list.append(kpart1)
                     link_prev = l
-                    # self.refresh_index_list()
 
             else:
                 # insert the file into the current dir
@@ -602,10 +594,21 @@ class Index(OrderedDict):
                 self._OrderedDict__map[k] = link_prev[1] = link_next[0] = [link_prev, link_next, k]
                 dict.__setitem__(self, k, v)
                 link_prev = link_prev[1]
+                new_list.append(k)
  
-                # self.refresh_index_list()
 
-        self._list = None
+        # if self._list is not None: 
+        #     if before is None : 
+        #         # self._list = self._list + keys
+        #         print self._list, keys
+        #         self._list = None
+        #     else:
+        #         i = self._list.index(before)
+        #         self._list = self._list[:i] + keys + self._list[i:]
+        # else:
+        new_list += self._list[i:]
+        self._list = new_list
+
         self._full_key_list = None
         self._nfiles += files_count
 
@@ -656,7 +659,6 @@ class Index(OrderedDict):
                 return True
         return False
         """
-        self.refresh_index_list()
         kpart1, kpart2 = self.__get_dir_component(key)
         if kpart1:
             if self._list is not None and kpart1 in self._list:
@@ -716,8 +718,6 @@ class Index(OrderedDict):
         return self._full_key_list[offset]
 
     def __str__(self):
-        print "calling str"
-        self.refresh_index_list()
         l = [(k,dict.__getitem__(self,k)) for k in self._list]
         l_str = ["('"+str(k)+"', '"+str(v)+"')" if isinstance(v,str)
                  else "('"+str(k)+"', "+str(v)+")" for k,v in l]

@@ -100,7 +100,9 @@ class TestIndex:
             = ["value" + str(s) for s in range(self.item_count)] 
         #import IPython
         #IPython.embed()
-
+        # new_index.refresh_index_list()
+        # print new_index._list
+        # assert( False )
         assert new_index["path1/path2/"] == \
             ["value" + str(s) for s in range(self.item_count)]
 
@@ -256,6 +258,7 @@ class TestIndex:
         
         # Test sequence of queries
         sub1_index = new_index.subset("k/")
+        # assert(False)
         assert sub1_index.keys() == \
             ["e/y/"+str(s) for s in range(self.item_count)]
         sub2_index = sub1_index.subset("e/")
