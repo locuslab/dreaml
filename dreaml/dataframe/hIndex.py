@@ -347,33 +347,29 @@ class Index(OrderedDict):
     def __iter__(self):
         class iterator(object):
             def __init__(self, obj):
-                #self.dir_stack = list()
                 self.cur_dir = obj
                 self.cur_index = 0
-                #self.cur_dir_name = ""
-                #self.cur_dir.refresh_index_list()
                 self.cur_dir.refresh_full_key_list()
             def __iter__(self):
                 return self
             def next(self):
-                if self.cur_index == len(self.cur_dir._full_key_list):
+                try:
+                    ret = self.cur_dir._full_key_list[self.cur_index]
+                except IndexError:
                     raise StopIteration
-                ret = self.cur_dir._full_key_list[self.cur_index]
                 self.cur_index += 1
                 return ret
 
         return iterator(self)
 
     def __delitem__(self, i):
-        keys = self._get_keys(i)
-        if any(not self.key_exists(k, key_end, e_index) for k, key_end, e_index in keys):
-            raise KeyError(i)
-        self.__delete_main(keys)
-
-    def __delete_main(self, keys):
         """ 
         Delete items for indexing. 
         """
+        keys = self._get_keys(i)
+        if any(not self.key_exists(k, key_end, e_index) for k, key_end, e_index in keys):
+            raise KeyError(i)
+
         for k, key_end, e_index in keys:
             files_count = 1
             if k[-1] is '/':
