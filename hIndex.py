@@ -633,8 +633,13 @@ class Index(OrderedDict):
 
         Returns None, None if the key does not have a /
         """
+        # if len(key) == 0:
+        #     return None, key
+        if len(key) == 0:
+            return None, None
         loc = key.find('/')
         if loc >= 0:
+            print key[:loc+1], key[loc+1:]
             return key[:loc+1], key[loc+1:]
         else:
             return None, None
