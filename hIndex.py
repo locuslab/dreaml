@@ -31,7 +31,7 @@ class Index(OrderedDict):
         self._full_key_list = None
 
         # this should always be accurate
-        self._full_key_list_count = 0
+        self._nfiles = 0
 
         self._path = "/"
 
@@ -41,7 +41,7 @@ class Index(OrderedDict):
 
         self.refresh_index_list()
         self.refresh_full_key_list()
-        self._full_key_list_count = len(self._full_key_list)
+        self._nfiles = len(self._full_key_list)
 
         self._subset_cache = {}
 
@@ -152,7 +152,7 @@ class Index(OrderedDict):
                 ret.append(prefix + k)
                 self_ret.append(k)
         self._full_key_list = self_ret
-        assert len(ret) == self._full_key_list_count
+        assert len(ret) == self._nfiles
         return ret
 
     def _get_keys(self, i, expand=True):
@@ -305,7 +305,7 @@ class Index(OrderedDict):
                 if new_index is None:
                     raise KeyError(k)
                 data.append((k, dict.__getitem__(new_index, key_end)))
-        return Index(data)
+            return Index(data)
 
     def __getitem__(self, i):
         """ Get items (as array of values) for indexing i """
@@ -352,7 +352,7 @@ class Index(OrderedDict):
     # returns the number of files in the hierarchy, not the number of elements 
     # this index
     def __len__(self):
-        return self._full_key_list_count
+        return self._nfiles
 
     def __iter__(self):
         class iterator(object):
@@ -423,8 +423,8 @@ class Index(OrderedDict):
                 #self.refresh_index_list()
                 self._full_key_list = None
             
-        self._full_key_list_count -= files_count
-        assert self._full_key_list_count >= 0
+        self._nfiles -= files_count
+        assert self._nfiles >= 0
 
 
     def relabel(self, keys):
@@ -516,9 +516,14 @@ class Index(OrderedDict):
         See __setitem__
         """
         if before is not None:
+            link_prev, link_next = None, None
             if not isinstance(before, str):
                 raise KeyError("before must be a single key")
             before_parent, before_file = self.__get_parent_dir_and_file(before)
+        else:
+            link_prev = self._OrderedDict__root[0]
+            link_next = link_prev[1]
+
         if isinstance(keys, list):
             if not keys_checked:
                 if not isinstance(values, list):
@@ -534,6 +539,8 @@ class Index(OrderedDict):
                         key_parent, key_file = self.__get_parent_dir_and_file(k)
                         if key_parent != before_parent:
                             raise KeyError("key parent dir and before parent dir mismatch")
+            kvs = zip(keys,values)
+            files_count = len(keys)
         elif isinstance(keys, str):
             if not keys_checked:
                 assert(not self.key_exists(keys))
@@ -543,17 +550,13 @@ class Index(OrderedDict):
                         raise KeyError("key parent dir and before parent dir mismatch")
 
             # so that zip works correctly below
-            keys = [keys]
-            values = [values]
+            kvs = [(keys,values)]
+            files_count = 1
+        else: 
+            kvs = zip(keys,values)
+            files_count = len(keys)
 
-            link_prev = None
-            link_next = None
-        if before is None:
-            link_prev = self._OrderedDict__root[0]
-            link_next = link_prev[1]
-
-        files_count = len(keys)
-        for k,v in zip(keys, values):
+        for k,v in kvs:
             if k[-1] is '/':
                 files_count -= 1
             kpart1, kpart2 = self.__get_dir_component(k)
@@ -577,41 +580,34 @@ class Index(OrderedDict):
                         link_prev = self._OrderedDict__map[before_file][0]
                         link_next = link_prev[1]
                     l = [link_prev, link_next, kpart1]
-                    self._OrderedDict__map[kpart1] = l
-                    link_prev[1] = l
-                    link_next[0] = l
+                    self._OrderedDict__map[kpart1]=link_prev[1]=link_next[0]=l
 
                     if len(kpart2) > 0:
                         next_index = Index()
                         next_index._path = kpart1
                         dict.__setitem__(self, kpart1, next_index)
-                        link_prev = l
                         next_index.__insert_main(kpart2, v, True, before)
                     else:
                         # this case only happens if key is a dir and value is an Index
                         dict.__setitem__(self, kpart1, v)
-                        link_prev = l
-                    self._list = None  
+                    link_prev = l
                     # self.refresh_index_list()
-                self._full_key_list = None
 
             else:
                 # insert the file into the current dir
                 if link_prev is None:
                     link_prev = self._OrderedDict__map[before_file][0]
                     link_next = link_prev[1]
-                l = [link_prev, link_next, k]
-                self._OrderedDict__map[k] = l
-                link_prev[1] = l
-                link_next[0] = l
-                dict.__setitem__(self, k, v)
-                link_prev = l
- 
-                self._list = None
-                # self.refresh_index_list()
-                self._full_key_list = None
 
-        self._full_key_list_count += files_count
+                self._OrderedDict__map[k] = link_prev[1] = link_next[0] = [link_prev, link_next, k]
+                dict.__setitem__(self, k, v)
+                link_prev = link_prev[1]
+ 
+                # self.refresh_index_list()
+
+        self._list = None
+        self._full_key_list = None
+        self._nfiles += files_count
 
     def __get_parent_dir_and_file(self, key):
         """
@@ -635,11 +631,10 @@ class Index(OrderedDict):
         """
         # if len(key) == 0:
         #     return None, key
-        if len(key) == 0:
-            return None, None
+        # if len(key) == 0:
+        #     return None, None
         loc = key.find('/')
         if loc >= 0:
-            print key[:loc+1], key[loc+1:]
             return key[:loc+1], key[loc+1:]
         else:
             return None, None
