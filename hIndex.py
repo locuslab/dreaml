@@ -273,22 +273,26 @@ class Index(OrderedDict):
 
 
     def subset(self, i):
-        """ For an indexing i, return the subset of the dataframe"""
-        keys = self._get_keys(i)
+        """ For an indexing i, return the subset of the dataframe. Exact key
+        subset queries do not work. """
         if isinstance(i,str):
             if i in self._subset_cache:
                 return self._subset_cache[i]
             else:
-                data = list()
-                truncated_keys = [k[len(i):] for k in keys]
-                for (tk,k) in zip(truncated_keys,keys):
-                    new_index, key_end = self.__find_enclosing_index(k, False)
-                    if new_index is None:
-                        raise KeyError(k)
-                    data.append((tk, dict.__getitem__(new_index, key_end)))
-                self._subset_cache[i] = Index(data)
-                return self._subset_cache[i]
+                loc = i.find('/')
+                if loc >= 0:
+                    if dict.__contains__(self,i[:loc+1]):
+                        if loc+1 >= len(i):
+                            return dict.__getitem__(self,i)
+
+                        else:
+                            return dict.__getitem__(self,i[:loc+1]).subset(i[loc+1:])
+                    else:
+                        return Index()
+                else:
+                    return Index([(i,self[i])])
         else:
+            keys = self._get_keys(i)
             data = list()
             for k in keys:
                 new_index, key_end = self.__find_enclosing_index(k, False)

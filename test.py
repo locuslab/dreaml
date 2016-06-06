@@ -270,6 +270,7 @@ class TestIndex:
 
         # Test multiple queries at once
         sub4_index = new_index.subset("k/e/")
+        print sub4_index
         assert sub4_index.keys() == \
             ["y/"+str(s) for s in range(self.item_count)]
         sub5_index = new_index.subset("k/e/y/")
