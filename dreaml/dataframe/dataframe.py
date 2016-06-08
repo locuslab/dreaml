@@ -229,7 +229,7 @@ class DataFrame(object):
         if i_j == ((),()):
             i_j = (((None,None,None),),((None,None,None),))
 
-        self._cache_lock.acquire()
+        # self._cache_lock.acquire()
         if (i_j) in self._cache:
             # A readonly cache entry can become read-write, but not the other
             # way around (otherwise, read-write entries would not have their
@@ -244,10 +244,10 @@ class DataFrame(object):
             # to the cached entry. However, this is OK, since the new
             # rows/columms won't be present in the cache yet. 
             # assert A.shape == self.shape
-            self._cache_lock.release()
+            # self._cache_lock.release()
             # print "cache hit!" +str(i_j)+str(A.shape)
             return A
-        self._cache_lock.release()
+        # self._cache_lock.release()
         # print "cache miss :("+str(i_j)+str(self.shape)
 
         # If matrix is empty, raise error
@@ -320,7 +320,8 @@ class DataFrame(object):
                 elif typ == np.ndarray and sp.issparse(A):
                     A = sp.csr_matrix(A)
 
-        # Finally, store the cached matrix
+        # Finally, store the cached matrix. Need a lock in case other threads
+        # are iterating over the cache
         self._cache_lock.acquire()
         self._cache_add(i_j, A, readonly=readonly)
         self._cache_lock.release()
@@ -932,15 +933,14 @@ class DataFrame(object):
         M = val.get_matrix(readonly=self._cache_readonly(node))
 
         # First check the cache for a fast set. 
-        self._cache_lock.acquire()
         if node in self._cache:
             if self._cache_readonly(node) == True:
                 raise UserWarning("Attempting to set a readonly cache block. " \
                                   "The result will not persist. ")
+            self._cache_lock.acquire()
             self._cache_add(node,M,readonly=self._cache_readonly(node))
             self._cache_lock.release()
             return
-        self._cache_lock.release()
 
         # If query is a directory or if the dataframe has no existing entries, 
         # then label the rows according to the input dataframe
@@ -1022,12 +1022,12 @@ class DataFrame(object):
                 if self._graph.node[k_l]["status"] != self.STATUS_BLUE:
                     self._propogate_stop(k_l)
 
-        self._cache_lock.acquire()
+        # self._cache_lock.acquire()
         # From here on out we assume its a DataFrame. First we must evict all
-        # conflicts, since the matrix is being changed. Since we already have a
-        # lock, do not use the safe call
-        for j_k in self._cache_find_evictions(node):
-            self._cache_evict(j_k)
+        # conflicts, since the matrix is being changed. 
+        self._safe_cache_find_and_evict(node)
+        # for j_k in self._cache_find_evictions(node):
+        #     self._cache_evict(j_k)
 
         # Manually update the dataframe
         if all_rows_exist and all_cols_exist and all_parts_exist:
@@ -1059,8 +1059,8 @@ class DataFrame(object):
             # It is important this occurs after adding the indices to the 
             # row and column indexes, since the df_cache logic uses the
             # indices to determine overlap. 
-            self._unsafe_df_cache_flush(node)
-        self._cache_lock.release()
+            self._df_cache_flush(node)
+        # self._cache_lock.release()
         # self._cache_add(node,M)
         if no_rows_exist or no_cols_exist:
             for k_l in self._get_implicit_dependents(node):
@@ -1251,7 +1251,6 @@ class DataFrame(object):
     def _get_implicit_dependents(self,i_j):
         """ Return all nodes implicitly dependent on i_j """
         i,j = i_j
-        print "getting implicit dependents of "+str(i_j)
         (rows,cols) = self._get_full_rows_and_cols(i_j, ignore_df_cache=True)
 
         dependents = set()
