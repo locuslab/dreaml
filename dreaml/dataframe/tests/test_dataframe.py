@@ -100,6 +100,7 @@ class TestDataFrame:
             ("row/path1/","col/"))
 
     def test_dataframe_basic(self):
+        print "kdfd"
         row1 = "row/path1/"
         row2 = "row/path2/"
         col1 = "col/path1/"
