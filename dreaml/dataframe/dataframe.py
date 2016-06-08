@@ -221,22 +221,34 @@ class DataFrame(object):
         Returns: A matrix whose contents are identical to that of the DataFrame.
         """
         self._refresh_index()
-
-        assert((len(self._row_index),len(self._col_index))
-                == self.shape)
+        # This is a useless assert, it is the definition of shape
+        # assert((len(self._row_index),len(self._col_index))
+        #         == self.shape)
 
         i_j = (self._row_query,self._col_query)
         if i_j == ((),()):
             i_j = (((None,None,None),),((None,None,None),))
+
+        self._cache_lock.acquire()
         if (i_j) in self._cache:
             # A readonly cache entry can become read-write, but not the other
             # way around (otherwise, read-write entries would not have their
             # changes persist after eviction)
-            if self._cache_readonly((i_j)):
+            if self._cache_readonly((i_j)): 
                 self._cache_set_readonly(i_j, readonly)
             A = self._cache_fetch(i_j)
-            assert A.shape == self.shape
+            # if A.shape != self.shape:
+            #     print A.shape, self.shape
+            # This assert is not always true. If another thread is in the
+            # process of adding more rows/columns, then the sizes will mis-match
+            # to the cached entry. However, this is OK, since the new
+            # rows/columms won't be present in the cache yet. 
+            # assert A.shape == self.shape
+            self._cache_lock.release()
+            # print "cache hit!" +str(i_j)+str(A.shape)
             return A
+        self._cache_lock.release()
+        # print "cache miss :("+str(i_j)+str(self.shape)
 
         # If matrix is empty, raise error
         if self.empty():
@@ -244,8 +256,7 @@ class DataFrame(object):
 
         # # Otherwise purge the cache of related entries and repull from DF
         if not readonly:
-            for j_k in self._cache_find_evictions(i_j):
-                self._cache_evict(j_k)
+            self._safe_cache_find_and_evict(i_j)
 
         row_vals = self._row_index.values()
         col_vals = self._col_index.values()
@@ -310,7 +321,9 @@ class DataFrame(object):
                     A = sp.csr_matrix(A)
 
         # Finally, store the cached matrix
+        self._cache_lock.acquire()
         self._cache_add(i_j, A, readonly=readonly)
+        self._cache_lock.release()
         return A
 
     def _is_simple_query(self):
@@ -919,12 +932,15 @@ class DataFrame(object):
         M = val.get_matrix(readonly=self._cache_readonly(node))
 
         # First check the cache for a fast set. 
+        self._cache_lock.acquire()
         if node in self._cache:
             if self._cache_readonly(node) == True:
                 raise UserWarning("Attempting to set a readonly cache block. " \
                                   "The result will not persist. ")
             self._cache_add(node,M,readonly=self._cache_readonly(node))
+            self._cache_lock.release()
             return
+        self._cache_lock.release()
 
         # If query is a directory or if the dataframe has no existing entries, 
         # then label the rows according to the input dataframe
@@ -969,6 +985,9 @@ class DataFrame(object):
         assert(all_rows_exist or no_rows_exist)
         assert(all_cols_exist or no_cols_exist)
 
+        # Since the cache maintains indices, we need to lock until the indices
+        # are updating, the underlying matrix is written, 
+        # and cache eviction are done
         # If this is going to change the row/column structure, stop all dependents
         if no_cols_exist: 
             col_id = top_df._add_cols(cols)
@@ -997,14 +1016,19 @@ class DataFrame(object):
         # If the entries do not exist, then start by
         # stopping all dependencies that do exist
         # all entries should exist at this point
+        # since this occurs after adding the rows and columns
         if no_rows_exist or no_cols_exist:
             for k_l in self._get_implicit_dependents(node):
                 if self._graph.node[k_l]["status"] != self.STATUS_BLUE:
                     self._propogate_stop(k_l)
+
+        self._cache_lock.acquire()
         # From here on out we assume its a DataFrame. First we must evict all
-        # conflicts, since the matrix is being changed. 
+        # conflicts, since the matrix is being changed. Since we already have a
+        # lock, do not use the safe call
         for j_k in self._cache_find_evictions(node):
             self._cache_evict(j_k)
+
         # Manually update the dataframe
         if all_rows_exist and all_cols_exist and all_parts_exist:
             top_df._write_matrix_to(M,rows,cols)
@@ -1035,8 +1059,8 @@ class DataFrame(object):
             # It is important this occurs after adding the indices to the 
             # row and column indexes, since the df_cache logic uses the
             # indices to determine overlap. 
-            self._df_cache_flush(node)
-
+            self._unsafe_df_cache_flush(node)
+        self._cache_lock.release()
         # self._cache_add(node,M)
         if no_rows_exist or no_cols_exist:
             for k_l in self._get_implicit_dependents(node):
@@ -1057,8 +1081,7 @@ class DataFrame(object):
             self._propogate_stop(k_l)
 
         # Evict all conflicts
-        for j_k in self._cache_find_evictions(node):
-            self._cache_evict(j_k)
+        self._safe_cache_find_and_evict(node)
 
         df = self[i_j]
         row_prefix,col_prefix = df.pwd()
@@ -1322,10 +1345,31 @@ class DataFrame(object):
         # If we update params_df here, then it won't update any parents of 
         self._refresh_index()
 
-        for j_k in self._cache_find_evictions(self.hash()):
-            self._cache_evict(j_k)
+        self._safe_cache_find_and_evict(self.hash())
 
     def _df_cache_flush(self,i_j):
+        """ Remove all cached dataframe entries that are dependent on i_j """
+        if i_j in self._df_cache:
+            # del self._df_cache[i_j]
+            self._df_cache_del(i_j)
+            self._cache_lock.acquire()
+            if i_j in self._cache:
+                self._cache_evict(i_j)
+            self._cache_lock.release()
+        implicit_dependents = self._get_df_implicit_dependents(i_j)
+        for k_l in implicit_dependents:
+            if k_l in self._df_cache:
+                # Delete from both caches, since the target has changed
+                # This order matters, since the eviction needs to write
+                # back to the dataframe according to the old value of the df
+                # cache. 
+                self._cache_lock.acquire()
+                if k_l in self._cache:
+                    self._cache_evict(k_l)
+                self._cache_lock.release()
+                self._df_cache_del(k_l)
+
+    def _unsafe_df_cache_flush(self,i_j):
         """ Remove all cached dataframe entries that are dependent on i_j """
         if i_j in self._df_cache:
             # del self._df_cache[i_j]
@@ -1343,7 +1387,6 @@ class DataFrame(object):
                     self._cache_evict(k_l)
                 self._df_cache_del(k_l)
 
-
     def _refresh(self,T): 
         """ Reindex into all the arguments for a given transformation. This
         ensures the sizes are up to date. This may be deprecated with
@@ -1354,8 +1397,10 @@ class DataFrame(object):
                 d = self._reindex((df._row_query,df._col_query))
                 args[i] = d
                 query = (args[i]._row_query,args[i]._col_query)
+                self._cache_lock.acquire()
                 if query in self._cache:
                     self._cache_evict(query)
+                self._cache_lock.release()
                 # I think this is unnecessary: the df has not changed shape here
                 # self._df_cache_flush(query)
         T.args = tuple(args)
@@ -1441,6 +1486,12 @@ class DataFrame(object):
         i_j = (self._row_query,self._col_query)
         return i_j in self._df_cache
 
+    def _safe_cache_find_and_evict(self,i_j):
+        self._cache_lock.acquire()
+        for j_k in self._cache_find_evictions(i_j):
+            self._cache_evict(j_k)
+        self._cache_lock.release()
+
     def _cache_find_evictions(self,i_j): 
         """ Find all cached entries that depend on node i_j """
         # Same logic as get_implicit_dependents but searching the cache instead
@@ -1452,7 +1503,7 @@ class DataFrame(object):
         (rows,cols) = self._get_full_rows_and_cols(i_j, ignore_df_cache=True)
         # Return a list of nodes that have a common intersection with i_j
 
-        self._cache_lock.acquire()
+        # self._cache_lock.acquire()
         evictions = set()
         for (i0_j0) in self._cache:
             if DataFrame._node_directory_overlap(i_j,i0_j0):
@@ -1460,13 +1511,13 @@ class DataFrame(object):
                 if (any(r in rows for r in rows0) \
                     and any(c in cols for c in cols0)):
                     evictions.add(i0_j0)
-        self._cache_lock.release()
+        # self._cache_lock.release()
         return evictions
 
     def _cache_evict(self,i_j):
         """ Evict the matrix for node i_j from the cache, and write the
         cached data through to do the underlying DataFrame. """
-        self._cache_lock.acquire()
+        # self._cache_lock.acquire()
         if (i_j in self._cache):
             if(self._cache_readonly(i_j)):
                 # If readonly, then just remove entry from cache
@@ -1483,17 +1534,17 @@ class DataFrame(object):
                 assert(len(i) == len(j))
                 df = self._reindex(i_j)        
                 df._write_matrix_to(M,old_rows,old_cols)
-        self._cache_lock.release()
+        # self._cache_lock.release()
 
     def _cache_add(self,i_j,A,readonly=False):
         """ Add the matrix A for node i_j into the cache """
+        # self._cache_lock.acquire()
         df = self._reindex(i_j)
-        self._cache_lock.acquire()
         self._cache[i_j] = (A,
                             df._row_index.keys(),
                             df._col_index.keys(),
                             readonly)
-        self._cache_lock.release()
+        # self._cache_lock.release()
 
     def _cache_del(self,i_j):
         """ Remove node i_j from the cache """
@@ -1520,9 +1571,7 @@ class DataFrame(object):
         return False
 
     def _cache_set_readonly(self, i_j, tf):
-        self._cache_lock.acquire()
         self._cache[i_j] = self._cache[i_j][:3] + (tf,)
-        self._cache_lock.release()
 
     def _df_cache_del(self,i_j):
         """ Delete the entry for i_j in the df cache """
