@@ -304,3 +304,23 @@ class TestIndex:
         assert sub12_index.keys()==[]
         assert len(sub12_index)==0
 
+    def test_index_iter(self):
+        new_index = Index()
+        all_keys = ["k/e/y/"+str(s) for s in range(self.item_count)]
+        all_values = ["value"+str(s) for s in range(self.item_count)]
+        new_index[all_keys] = all_values
+
+        # Test iteration
+        i = 0
+        for key,val in new_index.iteritems():
+            assert(all_keys[i]==key)
+            assert(all_values[i]==val)
+            i += 1
+
+        # Test reverse iteration
+        i = len(new_index)-1
+        for key in reversed(new_index):
+            print all_keys[i], key
+            assert all_keys[i]==key
+            assert all_values[i]==new_index[key]
+            i -= 1
