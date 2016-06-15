@@ -10,6 +10,7 @@ from os.path import commonprefix
 from time import time
 from threading import Lock, Thread
 import json
+from rwlock import ReadWriteLock as RWLock
 
 class DataFrame(object):
     """ The DataFrame class organizes data in a block sparse array format using
@@ -33,7 +34,7 @@ class DataFrame(object):
         self._col_index = Index()
         self._partitions = {}
         self._cache = {}
-        self._cache_lock = Lock()
+        self._cache_lock = RWLock()
         self._df_cache = {}
         self._df_cache_lock = Lock()
         self._row_counts = []
@@ -229,25 +230,24 @@ class DataFrame(object):
         if i_j == ((),()):
             i_j = (((None,None,None),),((None,None,None),))
 
-        # self._cache_lock.acquire()
-        if (i_j) in self._cache:
-            # A readonly cache entry can become read-write, but not the other
-            # way around (otherwise, read-write entries would not have their
-            # changes persist after eviction)
-            if self._cache_readonly((i_j)): 
-                self._cache_set_readonly(i_j, readonly)
-            A = self._cache_fetch(i_j)
-            # if A.shape != self.shape:
-            #     print A.shape, self.shape
-            # This assert is not always true. If another thread is in the
-            # process of adding more rows/columns, then the sizes will mis-match
-            # to the cached entry. However, this is OK, since the new
-            # rows/columms won't be present in the cache yet. 
-            # assert A.shape == self.shape
-            # self._cache_lock.release()
-            # print "cache hit!" +str(i_j)+str(A.shape)
-            return A
-        # self._cache_lock.release()
+        self._cache_lock.acquire_read()
+        try:
+            if (i_j) in self._cache:
+                # A readonly cache entry can become read-write, but not the other
+                # way around (otherwise, read-write entries would not have their
+                # changes persist after eviction)
+                if self._cache_readonly((i_j)): 
+                    self._cache_set_readonly(i_j, readonly)
+                A = self._cache_fetch(i_j)
+                # if A.shape != self.shape:
+                #     print A.shape, self.shape
+                # This assert is not always true. If another thread is in the
+                # process of adding more rows/columns, then the sizes will mis-match
+                # to the cached entry. However, this is OK, since the new
+                # rows/columms won't be present in the cache yet. 
+                return A
+        finally:
+            self._cache_lock.release_read()
         # print "cache miss :("+str(i_j)+str(self.shape)
 
         # If matrix is empty, raise error
@@ -322,9 +322,7 @@ class DataFrame(object):
 
         # Finally, store the cached matrix. Need a lock in case other threads
         # are iterating over the cache
-        self._cache_lock.acquire()
-        self._cache_add(i_j, A, readonly=readonly)
-        self._cache_lock.release()
+        self._safe_cache_add(i_j, A, readonly=readonly)
         return A
 
     def _is_simple_query(self):
@@ -372,6 +370,11 @@ class DataFrame(object):
         i,j = 0,0
         (rp,ri) = row_vals[i]
         (cp,ci) = col_vals[j]
+        # print ""
+        # print next(reversed(self._row_index))
+        # print self._row_index[next(reversed(self._row_index))], row_vals[-1]
+        # assert(self._row_index[next(reversed(self._row_index))] ==  row_vals[-1])
+        # assert(self._row_index[next(reversed(self._col_index))] ==  col_vals[-1])
 
         (rp_end,ri_end) = row_vals[-1]
         (cp_end,ci_end) = col_vals[-1]
@@ -937,9 +940,7 @@ class DataFrame(object):
             if self._cache_readonly(node) == True:
                 raise UserWarning("Attempting to set a readonly cache block. " \
                                   "The result will not persist. ")
-            self._cache_lock.acquire()
-            self._cache_add(node,M,readonly=self._cache_readonly(node))
-            self._cache_lock.release()
+            self._safe_cache_add(node,M,readonly=self._cache_readonly(node))
             return
 
         # If query is a directory or if the dataframe has no existing entries, 
@@ -1022,12 +1023,9 @@ class DataFrame(object):
                 if self._graph.node[k_l]["status"] != self.STATUS_BLUE:
                     self._propogate_stop(k_l)
 
-        # self._cache_lock.acquire()
         # From here on out we assume its a DataFrame. First we must evict all
         # conflicts, since the matrix is being changed. 
         self._safe_cache_find_and_evict(node)
-        # for j_k in self._cache_find_evictions(node):
-        #     self._cache_evict(j_k)
 
         # Manually update the dataframe
         if all_rows_exist and all_cols_exist and all_parts_exist:
@@ -1351,10 +1349,10 @@ class DataFrame(object):
         if i_j in self._df_cache:
             # del self._df_cache[i_j]
             self._df_cache_del(i_j)
-            self._cache_lock.acquire()
+            # self._cache_lock.acquire()
             if i_j in self._cache:
-                self._cache_evict(i_j)
-            self._cache_lock.release()
+                self._safe_cache_evict(i_j)
+            # self._cache_lock.release()
         implicit_dependents = self._get_df_implicit_dependents(i_j)
         for k_l in implicit_dependents:
             if k_l in self._df_cache:
@@ -1362,10 +1360,10 @@ class DataFrame(object):
                 # This order matters, since the eviction needs to write
                 # back to the dataframe according to the old value of the df
                 # cache. 
-                self._cache_lock.acquire()
+                # self._cache_lock.acquire()
                 if k_l in self._cache:
-                    self._cache_evict(k_l)
-                self._cache_lock.release()
+                    self._safe_cache_evict(k_l)
+                # self._cache_lock.release()
                 self._df_cache_del(k_l)
 
     def _unsafe_df_cache_flush(self,i_j):
@@ -1396,10 +1394,10 @@ class DataFrame(object):
                 d = self._reindex((df._row_query,df._col_query))
                 args[i] = d
                 query = (args[i]._row_query,args[i]._col_query)
-                self._cache_lock.acquire()
+                # self._cache_lock.acquire()
                 if query in self._cache:
-                    self._cache_evict(query)
-                self._cache_lock.release()
+                    self._safe_cache_evict(query)
+                # self._cache_lock.release()
                 # I think this is unnecessary: the df has not changed shape here
                 # self._df_cache_flush(query)
         T.args = tuple(args)
@@ -1486,10 +1484,14 @@ class DataFrame(object):
         return i_j in self._df_cache
 
     def _safe_cache_find_and_evict(self,i_j):
-        self._cache_lock.acquire()
-        for j_k in self._cache_find_evictions(i_j):
-            self._cache_evict(j_k)
-        self._cache_lock.release()
+        self._cache_lock.acquire_read()
+        try:
+            evictions = self._cache_find_evictions(i_j)
+        finally:
+            self._cache_lock.release_read()
+
+        for j_k in evictions:
+            self._safe_cache_evict(j_k)
 
     def _cache_find_evictions(self,i_j): 
         """ Find all cached entries that depend on node i_j """
@@ -1513,37 +1515,43 @@ class DataFrame(object):
         # self._cache_lock.release()
         return evictions
 
-    def _cache_evict(self,i_j):
+    def _safe_cache_evict(self,i_j):
         """ Evict the matrix for node i_j from the cache, and write the
         cached data through to do the underlying DataFrame. """
-        # self._cache_lock.acquire()
-        if (i_j in self._cache):
-            if(self._cache_readonly(i_j)):
-                # If readonly, then just remove entry from cache
-                self._cache_del(i_j)
-            else:
-                # Otherwise we need to rerwite to the underlying df
-                M = self._cache_fetch(i_j)
-                old_rows = self._cache_rows(i_j)
-                old_cols = self._cache_cols(i_j)
-                self._cache_del(i_j)
+        self._cache_lock.acquire_write()
+        try:
+            if (i_j in self._cache):
+                if(self._cache_readonly(i_j)):
+                    # If readonly, then just remove entry from cache
+                    self._cache_del(i_j)
+                else:
+                    # Otherwise we need to rerwite to the underlying df
+                    M = self._cache_fetch(i_j)
+                    old_rows = self._cache_rows(i_j)
+                    old_cols = self._cache_cols(i_j)
+                    self._cache_del(i_j)
 
-                # Remove from cache before setting in dataframe
-                i,j = i_j
-                assert(len(i) == len(j))
-                df = self._reindex(i_j)        
-                df._write_matrix_to(M,old_rows,old_cols)
-        # self._cache_lock.release()
+                    # Remove from cache before setting in dataframe
+                    i,j = i_j
+                    assert(len(i) == len(j))
+                    df = self._reindex(i_j)        
+                    df._write_matrix_to(M,old_rows,old_cols)
+        finally:
+            self._cache_lock.release_write()
+
+    def _safe_cache_add(self,i_j,A,readonly=False):
+        """ Add the matrix A for node i_j into the cache """
+        self._cache_lock.acquire_write()
+        self._cache_add(i_j,A,readonly=readonly)
+        self._cache_lock.release_write()
 
     def _cache_add(self,i_j,A,readonly=False):
         """ Add the matrix A for node i_j into the cache """
-        # self._cache_lock.acquire()
         df = self._reindex(i_j)
         self._cache[i_j] = (A,
                             df._row_index.keys(),
                             df._col_index.keys(),
                             readonly)
-        # self._cache_lock.release()
 
     def _cache_del(self,i_j):
         """ Remove node i_j from the cache """
