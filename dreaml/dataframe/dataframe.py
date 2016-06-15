@@ -258,18 +258,16 @@ class DataFrame(object):
         if not readonly:
             self._safe_cache_find_and_evict(i_j)
 
-        row_vals = self._row_index.values()
-        col_vals = self._col_index.values()
-        if not (len(row_vals) > 0 and len(col_vals) > 0):
+        num_rows = len(self._row_index)
+        num_cols = len(self._col_index)
+        if not (num_rows > 0 and num_cols > 0):
             raise KeyError
-        row_id = row_vals[0][0]
-        col_id = col_vals[0][0]
+        row_id = next(self._row_index.itervalues())
+        col_id = next(self._col_index.itervalues())
 
         if self._is_simple_query():
             A = self._fast_get_matrix()
         else: 
-            print "not a simple query"
-            print self.hash()
         # This following code is slow, and should only be used when forming
         # matrices from overly complicated queries. Nearly all cases should be
         # handled by the above helper, which assumes a benign sequence of
@@ -278,28 +276,28 @@ class DataFrame(object):
         # If the entire dataframe exists in a single partition
         # return a subset of that partition
         # TODO: return an A of the type specified by type
-            if all(v[0]==row_id for v in row_vals) and \
-               all(v[0]==col_id for v in col_vals):
+            if all(v[0]==row_id for v in self._row_index.itervalues()) and \
+               all(v[0]==col_id for v in self._col_index.itervalues()):
                 if (row_id,col_id) in self._partitions:
                     partition = self._partitions[row_id,col_id]
-                    row_idx = [[v[1]] for v in row_vals]
-                    col_idx = [v[1] for v in col_vals]
+                    row_idx = [[v[1]] for k,v in row_vals]
+                    col_idx = [v[1] for k,v in col_vals]
                     A = partition[row_idx,col_idx]
                 else:
                     if typ == sp.csr_matrix:
-                        A = sp.csr_matrix((len(row_vals),len(col_vals)))
+                        A = sp.csr_matrix((num_rows, num_cols))
                     else:
-                        A = np.zeros((len(row_vals),len(col_vals)))
+                        A = np.zeros((num_rows, num_cols))
                     self._partitions[row_id,col_id] = A
             else: 
                 if typ == sp.csr_matrix:
-                    A = sp.csr_matrix((len(row_vals),len(col_vals)))
+                    A = sp.csr_matrix((num_rows, num_cols))
                 else:
-                    A = np.zeros((len(row_vals),len(col_vals)))
+                    A = np.zeros((num_rows, num_cols))
                 i=0
-                for row_id,row_idx in row_vals:
+                for row_id,row_idx in self._row_index.itervalues():
                     j=0
-                    for col_id,col_idx in col_vals:
+                    for col_id,col_idx in self._col_index.itervalues():
                         if (row_id,col_id) in self._partitions:
                             A[i,j] = self._partitions[row_id,col_id][row_idx,col_idx]
                         else:
@@ -368,16 +366,16 @@ class DataFrame(object):
         col_vals = self._col_index.values()
 
         i,j = 0,0
-        (rp,ri) = row_vals[i]
-        (cp,ci) = col_vals[j]
+        (rp,ri) = next(self._row_index.itervalues())
+        (cp,ci) = next(self._col_index.itervalues())
         # print ""
         # print next(reversed(self._row_index))
         # print self._row_index[next(reversed(self._row_index))], row_vals[-1]
         # assert(self._row_index[next(reversed(self._row_index))] ==  row_vals[-1])
         # assert(self._row_index[next(reversed(self._col_index))] ==  col_vals[-1])
 
-        (rp_end,ri_end) = row_vals[-1]
-        (cp_end,ci_end) = col_vals[-1]
+        (rp_end,ri_end) = self._row_index[next(reversed(self._row_index))]
+        (cp_end,ci_end) = self._col_index[next(reversed(self._col_index))]
 
         row_list = []
         while(rp != rp_end):
