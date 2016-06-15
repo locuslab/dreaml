@@ -1490,8 +1490,13 @@ class DataFrame(object):
         finally:
             self._cache_lock.release_read()
 
-        for j_k in evictions:
-            self._safe_cache_evict(j_k)
+        if len(evictions) > 0:
+            self._cache_lock.acquire_write()
+            try:
+                for j_k in evictions:
+                    self._cache_evict(j_k)
+            finally: 
+                self._cache_lock.release_write()
 
     def _cache_find_evictions(self,i_j): 
         """ Find all cached entries that depend on node i_j """
@@ -1516,28 +1521,32 @@ class DataFrame(object):
         return evictions
 
     def _safe_cache_evict(self,i_j):
-        """ Evict the matrix for node i_j from the cache, and write the
-        cached data through to do the underlying DataFrame. """
         self._cache_lock.acquire_write()
         try:
-            if (i_j in self._cache):
-                if(self._cache_readonly(i_j)):
-                    # If readonly, then just remove entry from cache
-                    self._cache_del(i_j)
-                else:
-                    # Otherwise we need to rerwite to the underlying df
-                    M = self._cache_fetch(i_j)
-                    old_rows = self._cache_rows(i_j)
-                    old_cols = self._cache_cols(i_j)
-                    self._cache_del(i_j)
-
-                    # Remove from cache before setting in dataframe
-                    i,j = i_j
-                    assert(len(i) == len(j))
-                    df = self._reindex(i_j)        
-                    df._write_matrix_to(M,old_rows,old_cols)
+            self._cache_evict(i_j)
         finally:
             self._cache_lock.release_write()
+
+
+    def _cache_evict(self,i_j):
+        """ Evict the matrix for node i_j from the cache, and write the
+        cached data through to do the underlying DataFrame. """
+        if (i_j in self._cache):
+            if(self._cache_readonly(i_j)):
+                # If readonly, then just remove entry from cache
+                self._cache_del(i_j)
+            else:
+                # Otherwise we need to rerwite to the underlying df
+                M = self._cache_fetch(i_j)
+                old_rows = self._cache_rows(i_j)
+                old_cols = self._cache_cols(i_j)
+                self._cache_del(i_j)
+
+                # Remove from cache before setting in dataframe
+                i,j = i_j
+                assert(len(i) == len(j))
+                df = self._reindex(i_j)        
+                df._write_matrix_to(M,old_rows,old_cols)
 
     def _safe_cache_add(self,i_j,A,readonly=False):
         """ Add the matrix A for node i_j into the cache """
