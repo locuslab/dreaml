@@ -349,40 +349,35 @@ class Index(OrderedDict):
         return self._nfiles
 
     def __iter__(self):
-        class iterator(object):
-            def __init__(self, obj):
-                self.dir_stack = list()
-                self.cur_dir = obj
-                self.cur_index = 0
-                self.cur_dir_name = ""
-            def __iter__(self):
-                return self
-            def next(self):
-                while 1:
-                    # if there are keys left in this dir operate on the next one
-                    if self.cur_dir._list is not None and self.cur_index < len(self.cur_dir._list):
-                        key = self.cur_dir._list[self.cur_index]
-                        self.cur_index += 1
-                        if key[-1:] == "/":
-                            self.dir_stack.append((self.cur_dir, self.cur_index))
-                            self.cur_index = 0
-                            self.cur_dir = dict.__getitem__(self.cur_dir, key)
-                            self.cur_dir_name += key
-                        else:
-                            return self.cur_dir_name + key
-                    # if there are no keys left go back up one level or end
+        # Start at current index at the first index, which is the top level
+        # directory
+        dir_stack = list()
+        cur_dir = self
+        cur_index = 0
+        cur_dir_name = ""
+        while 1:
+            # if there are keys left in this dir operate on the next one
+            if cur_dir._list is not None and cur_index < len(cur_dir._list):
+                key = cur_dir._list[cur_index]
+                cur_index += 1
+                if key[-1:] == "/":
+                    dir_stack.append((cur_dir, cur_index))
+                    cur_index = 0
+                    cur_dir = dict.__getitem__(cur_dir, key)
+                    cur_dir_name += key
+                else:
+                    yield cur_dir_name + key
+            # if there are no keys left go back up one level or end
+            else:
+                if len(dir_stack) > 0:
+                    (cur_dir, cur_index) = dir_stack.pop()
+                    last_part = cur_dir_name.rfind('/', 0, -2)
+                    if last_part >= 0:
+                        cur_dir_name = cur_dir_name[:last_part+1]
                     else:
-                        if len(self.dir_stack) > 0:
-                            (self.cur_dir, self.cur_index) = self.dir_stack.pop()
-                            last_part = self.cur_dir_name.rfind('/', 0, -2)
-                            if last_part >= 0:
-                                self.cur_dir_name = self.cur_dir_name[:last_part+1]
-                            else:
-                                self.cur_dir_name = ""
-                        else:
-                            raise StopIteration
-
-        return iterator(self)
+                        cur_dir_name = ""
+                else:
+                    break
 
     def __delitem__(self, i):
         keys = self._get_keys(i)
