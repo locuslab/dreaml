@@ -379,6 +379,37 @@ class Index(OrderedDict):
                 else:
                     break
 
+    def __reversed__(self):
+        # Start at current index at the first index, which is the top level
+        # directory
+        dir_stack = list()
+        cur_dir = self
+        cur_index = len(cur_dir._list)-1
+        cur_dir_name = ""
+        while 1:
+            # if there are keys left in this dir operate on the previous one
+            if cur_dir._list is not None and cur_index >= 0:
+                key = cur_dir._list[cur_index]
+                cur_index -= 1
+                if key[-1:] == "/":
+                    dir_stack.append((cur_dir, cur_index))
+                    cur_dir = dict.__getitem__(cur_dir, key)
+                    cur_index = len(cur_dir._list)-1
+                    cur_dir_name += key
+                else:
+                    yield cur_dir_name + key
+            # if there are no keys left go back up one level or end
+            else:
+                if len(dir_stack) > 0:
+                    (cur_dir, cur_index) = dir_stack.pop()
+                    last_part = cur_dir_name.rfind('/', 0, -2)
+                    if last_part >= 0:
+                        cur_dir_name = cur_dir_name[:last_part+1]
+                    else:
+                        cur_dir_name = ""
+                else:
+                    break
+
     def __delitem__(self, i):
         keys = self._get_keys(i)
         if any(not self.key_exists(k) for k in keys):
