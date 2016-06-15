@@ -1,5 +1,5 @@
 from index import Index
-import itertools
+import itertools 
 import operator
 import numpy as np
 import scipy.sparse as sp
@@ -362,17 +362,12 @@ class DataFrame(object):
             s1 = self._tuple_element_to_query(self._row_query[-1])
             s2 = self._tuple_element_to_query(self._col_query[-1])
             return self._cache_fetch(i_j)[s1,s2]
-        row_vals = self._row_index.values()
-        col_vals = self._col_index.values()
 
         i,j = 0,0
-        (rp,ri) = next(self._row_index.itervalues())
-        (cp,ci) = next(self._col_index.itervalues())
-        # print ""
-        # print next(reversed(self._row_index))
-        # print self._row_index[next(reversed(self._row_index))], row_vals[-1]
-        # assert(self._row_index[next(reversed(self._row_index))] ==  row_vals[-1])
-        # assert(self._row_index[next(reversed(self._col_index))] ==  col_vals[-1])
+        row_it = self._row_index.itervalues()
+        col_it = self._col_index.itervalues()
+        (rp,ri) = next(row_it)
+        (cp,ci) = next(col_it)
 
         (rp_end,ri_end) = self._row_index[next(reversed(self._row_index))]
         (cp_end,ci_end) = self._col_index[next(reversed(self._col_index))]
@@ -380,41 +375,40 @@ class DataFrame(object):
         row_list = []
         while(rp != rp_end):
             col_list = []
-            while(cp != cp_end):\
-                # p = self._partitions[rp,cp][ri:,ci:]
+            while(cp != cp_end):
                 p = self._index_partition((rp,cp),
                                           (slice(ri,None,None),
                                            slice(ci,None,None)))
                 col_list.append(p)
-                j += p.shape[1]
-                (cp,ci) = col_vals[j]
+                col_it = itertools.islice(col_it,p.shape[1]-1,None)
+                print cp,ci
+                (cp,ci) = next(col_it)
+                print cp,ci, p.shape
                 assert(ci==0)
-            # p = self._partitions[rp,cp][ri:,ci:ci_end+1]
+
             p = self._index_partition((rp,cp),
                                       (slice(ri,None,None),
                                        slice(ci,ci_end+1,None)))
             col_list.append(p)
-            j = 0
-            (cp,ci) = col_vals[j]
+            col_it = self._col_index.itervalues()
+            (cp,ci) = next(col_it)
             if sp.issparse(p):
                 row_list.append(sp.hstack(col_list))
             else:
                 row_list.append(np.hstack(col_list))
-            # row_list.append(col_list)
-            i += p.shape[0]
-            (rp,ri) = row_vals[i]
+
+            row_it = itertools.islice(row_it,p.shape[0]-1,None)
+            (rp,ri) = next(row_it)
         # last row
         col_list = []
         while(cp != cp_end):
-            # p = self._partitions[rp,cp][ri:ri_end+1,ci:]
             p = self._index_partition((rp,cp),
                                       (slice(ri,ri_end+1,None),
                                        slice(ci,None,None)))
             col_list.append(p)
-            j += p.shape[1]
-            (cp,ci) = col_vals[j]
+            col_it = itertools.islice(col_it, p.shape[1]-1,None)
+            (cp,ci) = next(col_it)
             assert(ci==0)
-        # p = self._partitions[rp,cp][ri:ri_end+1,ci:ci_end+1]
         p = self._index_partition((rp,cp),
                                   (slice(ri,ri_end+1,None),
                                    slice(ci,ci_end+1,None)))
@@ -429,12 +423,6 @@ class DataFrame(object):
         else:
             row_list.append(np.hstack(col_list))
             return np.vstack(row_list)
-        # assert(len(row_list) > 0 and len(col_list) > 0)
-        # if len(row_list) == 1 and len(col_list) == 1:
-        #     return p
-        # else:
-        #     print row_list
-        #     return np.asarray(np.bmat(row_list))
 
     def _index_partition(self,p_index,m_index):
         if p_index in self._partitions:
