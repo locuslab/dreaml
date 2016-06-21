@@ -252,7 +252,7 @@ class DataFrame(object):
 
         # If matrix is empty, raise error
         if self.empty():
-            raise KeyError
+            raise KeyError("Can't get matrix of an empty DataFrame.")
 
         # # Otherwise purge the cache of related entries and repull from DF
         if not readonly:
@@ -381,9 +381,7 @@ class DataFrame(object):
                                            slice(ci,None,None)))
                 col_list.append(p)
                 col_it = itertools.islice(col_it,p.shape[1]-1,None)
-                print cp,ci
                 (cp,ci) = next(col_it)
-                print cp,ci, p.shape
                 assert(ci==0)
 
             p = self._index_partition((rp,cp),
@@ -621,30 +619,33 @@ class DataFrame(object):
         
     def _subset(self, i, j):
         """ Return a subset of a DataFrame, just creating new index. """
-        subset = DataFrame()
-        subset._row_index = self._row_index.subset(i)
-        subset._col_index = self._col_index.subset(j)
-        subset._row_counts = self._row_counts
-        subset._col_counts = self._col_counts
+        if(i == slice(None,None,None) and j == slice(None,None,None)):
+            return self
+        else:
+            subset = DataFrame()
+            subset._row_index = self._row_index.subset(i)
+            subset._col_index = self._col_index.subset(j)
+            subset._row_counts = self._row_counts
+            subset._col_counts = self._col_counts
 
-        subset._partitions = self._partitions
-        subset._cache = self._cache
-        subset._df_cache = self._df_cache
-        subset._cache_lock = self._cache_lock
-        subset._df_cache_lock = self._df_cache_lock
-        
-        subset._row_query = self._row_query \
-                            + (DataFrame._query_to_tuple_element(i),)
-        subset._col_query = self._col_query \
-                            + (DataFrame._query_to_tuple_element(j),)
-        self.hash = lambda: (DataFrame._row_query,self._col_query)
+            subset._partitions = self._partitions
+            subset._cache = self._cache
+            subset._df_cache = self._df_cache
+            subset._cache_lock = self._cache_lock
+            subset._df_cache_lock = self._df_cache_lock
+            
+            subset._row_query = self._row_query \
+                                + (DataFrame._query_to_tuple_element(i),)
+            subset._col_query = self._col_query \
+                                + (DataFrame._query_to_tuple_element(j),)
+            self.hash = lambda: (DataFrame._row_query,self._col_query)
 
-        subset._top_df = self._top_df
+            subset._top_df = self._top_df
 
-        subset._graph = self._graph
-        subset._threads = self._threads
-        subset._plots = self._plots
-        return subset
+            subset._graph = self._graph
+            subset._threads = self._threads
+            subset._plots = self._plots
+            return subset
 
     def _skeleton_copy(self):
         """Return an empty index-level skelen copy of the Dataframe with
@@ -853,6 +854,50 @@ class DataFrame(object):
         self._row_index[row_keys] = row_vals
         return row_id
 
+    def _get_or_make_keys(self, query, val, axis=0, prefix=""):
+        """ Given a query, an index and a value, return the corresponding
+        subset of keys for this value if any exist. If none exist, construct
+        a list of keys for the query. """
+        if axis == 0: 
+            index = self._row_index
+        else:
+            index = self._col_index
+        keys = index._get_keys(query)
+
+        # If query is a string, append it to the prefix if it is a directory.
+        # Otherwise, the query is for exactly one file, so return the key for
+        # that file
+        if isinstance(query,str):
+            if query.endswith("/"):
+                prefix += query
+            else:
+                return [prefix + query]
+        
+        # If the val is a DataFrame, then we should use exactly the keys present
+        # in the DataFrame
+        if isinstance(val, DataFrame):
+            if axis == 0:
+                target_index  = val._row_index
+            else:
+                target_index = val._col_index
+            return [prefix + k for k in target_index.keys()]
+
+        # If the val is a single scalar, then return the exact key given by the
+        # query if it is a file, otherwise append a 0 to the directory
+
+        # If the keys already exist, then reconstruct the whole keys 
+        if len(keys) > 0:
+            return [prefix + k for k in keys]
+        # Otherwise, create new keys
+        else:
+            if isinstance(val,(int, long, float)):
+                return [prefix + "0"]
+            elif isinstance(val, np.ndarray):
+                return [prefix + str(k) for k in range(val.shape[axis])]
+            else:
+                raise ValueError("Unknown value being set to the DataFrame: " +str(type(val)))
+
+
     def __setitem__(self, i_j, val):
         """ Set a portion of the dataframe, passing row/column indices to the
         values stored in val. If the input is not a DataFrame, then try to
@@ -912,53 +957,26 @@ class DataFrame(object):
 
             return
 
+
+        row_prefix,col_prefix = self.pwd()
+        rows = self._get_or_make_keys(i, val, axis=0, prefix=row_prefix)
+        cols = self._get_or_make_keys(j, val, axis=1, prefix=col_prefix)
         if isinstance(val,(int, long, float)):
-            val = self.from_matrix(np.array([val]).reshape(1,1))
+            M = np.array([[val]])
+        elif isinstance(val, np.ndarray):
+            M = val
+        elif isinstance(val, DataFrame):
+            M = val.get_matrix()
+        else:
+            raise ValueError("Unknown datatype being set to the DataFrame")
 
-        # Assume our input is one giant matrix
-        # assert(len(val._partitions)==1)
-        # M = val._partitions[0,0]
-        # TODO: slow... should not have to fetch the matriix to set. 
-        M = val.get_matrix(readonly=self._cache_readonly(node))
-
-        # First check the cache for a fast set. 
+        # # First check the cache for a fast set. 
         if node in self._cache:
             if self._cache_readonly(node) == True:
                 raise UserWarning("Attempting to set a readonly cache block. " \
                                   "The result will not persist. ")
             self._safe_cache_add(node,M,readonly=self._cache_readonly(node))
             return
-
-        # If query is a directory or if the dataframe has no existing entries, 
-        # then label the rows according to the input dataframe
-
-        row_prefix,col_prefix = self.pwd()
-
-        if isinstance(i,str):
-            if i.endswith('/'):
-                rows = [row_prefix+i+k for k in val._row_index.keys()]
-            else: 
-                rows = [i]
-        elif len(self._row_index.subset(i))==0:
-            rows = [row_prefix+k for k in val._row_index.keys()]
-        # If the rows already exist, and we have a non-string query, then just
-        # pull existing row labels
-        else:
-            rows = [row_prefix+k for k in self._row_index.subset(i).keys()]
-
-        if isinstance(j,str):
-            if i.endswith('/'):
-                cols = [col_prefix+j+k for k in val._col_index.keys()]
-            else: 
-                cols = [j]
-        elif len(self._col_index.subset(j))==0:
-            cols = [col_prefix+k for k in val._col_index.keys()]
-        else:
-            cols = [col_prefix+k for k in self._col_index.subset(j).keys()]
-        
-        # Require equal sizes for source df and target index
-        assert((len(rows),len(cols)) == \
-               (len(val._row_index),len(val._col_index)))
 
         # From here on out, rows and cols are full path names; these go into
         # top_df, not the self dataframe
