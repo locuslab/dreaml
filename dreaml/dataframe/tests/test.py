@@ -310,12 +310,21 @@ class TestIndex:
         all_values = ["value"+str(s) for s in range(self.item_count)]
         new_index[all_keys] = all_values
 
-        # Test iteration
+        i = 0
+        for key in new_index:
+            assert(all_keys[i]==key)
+            assert(all_values[i]==new_index[key])
+            i += 1
+
+        # Test iteritems
         i = 0
         for key,val in new_index.iteritems():
             assert(all_keys[i]==key)
             assert(all_values[i]==val)
             i += 1
+
+        for i in new_index.iterkeys():
+            print i
 
         # Test reverse iteration
         i = len(new_index)-1
