@@ -1,6 +1,7 @@
 from collections import OrderedDict
 import fnmatch
 import numpy as np
+import itertools
 
 
 class Index(OrderedDict):
@@ -291,6 +292,11 @@ class Index(OrderedDict):
                         return Index()
                 else:
                     return Index([(i,self[i])])
+        elif isinstance(i,slice):
+            if (i.start,i.stop,i.step) == (None,None,None):
+                return self
+            else:
+                return Index(itertools.islice(self.iteritems(),i.start,i.stop,i.step))
         else:
             keys = self._get_keys(i)
             data = list()
