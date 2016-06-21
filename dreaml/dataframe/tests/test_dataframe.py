@@ -16,11 +16,27 @@ class TestDataFrame:
         df["row/2","col/1"] = 2
         df["row/2","col/2"].set_matrix(3)
         assert(df["row/","col/"].shape==(2,2))
-        assert(df["row/","col/"].get_matrix() == M).all()\
+        assert(df["row/","col/"].get_matrix() == M).all()
 
         df["a/","a/"].set_matrix(3)
         assert(df["a/","a/"].shape==(1,1))
         assert(df["a/","a/"].get_matrix()==3).all()
+
+    def test_simple_matrix_set(self):
+        df = DataFrame()
+        M = np.arange(4).reshape(2,2)
+        df["row/","col/"] = M
+        assert(df["row/","col/"].get_matrix() ==M).all()
+
+        df = DataFrame()
+        df["row/1","col/1"] = 0
+        df["row/1","col/2"] = 1
+        df["row/2","col/1"] = 2
+        df["row/2","col/2"] = 3
+        assert(df["row/","col/"].get_matrix() ==M).all()
+
+        df["row/","col/"] = 2*M
+        assert(df["row/","col/"].get_matrix() ==2*M).all()
 
     def test_from_matrix(self):
         matrix1 = np.ones((2,3))
