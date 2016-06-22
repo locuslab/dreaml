@@ -183,11 +183,13 @@ class DataFrame(object):
                                                      col_labels=col_labels))
         else:
             self._refresh_index()
-            rows = self._row_index.keys()
-            cols = self._col_index.keys()
+            if row_labels == None:
+                row_labels = self._row_index.keys()
+            if col_labels == None:
+                col_labels = self._col_index.keys()
             self.set_dataframe(DataFrame.from_matrix(M,
-                                                     row_labels=rows,
-                                                     col_labels=cols))
+                                                     row_labels=row_labels,
+                                                     col_labels=col_labels))
 
     def set_dataframe(self,M_df):
         """ Set the DataFrame's contents to match the given DataFrame M_df 
