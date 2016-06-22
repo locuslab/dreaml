@@ -164,7 +164,7 @@ class DataFrame(object):
         if n_rows==0 or n_cols==0:
             return True
 
-    def set_matrix(self,M,row_labels=None,col_labels=None):
+    def set_matrix(self, M, row_labels=None, col_labels=None):
         """ Set the DataFrame's contents to be the matrix M.
 
         This function uses numerical labels for each dimension in the DataFrame.
@@ -178,15 +178,21 @@ class DataFrame(object):
             M = np.array([[M]])
 
         if self.empty():
-            self.set_dataframe(DataFrame.from_matrix(M,
-                                                     row_labels=row_labels,
-                                                     col_labels=col_labels))
+            if row_labels == None: 
+                row_labels = slice(None,None,None)
+            if col_labels == None:
+                col_labels = slice(None,None,None)
+            self.__setitem__((row_labels,col_labels),M)
+            # self.set_dataframe(DataFrame.from_matrix(M,
+            #                                          row_labels=row_labels,
+            #                                          col_labels=col_labels))
         else:
             self._refresh_index()
             if row_labels == None:
                 row_labels = self._row_index.keys()
             if col_labels == None:
                 col_labels = self._col_index.keys()
+            # self.__setitem__((row_labels,col_labels),M)
             self.set_dataframe(DataFrame.from_matrix(M,
                                                      row_labels=row_labels,
                                                      col_labels=col_labels))
@@ -230,7 +236,7 @@ class DataFrame(object):
 
         i_j = (self._row_query,self._col_query)
         if i_j == ((),()):
-            i_j = (((None,None,None),),((None,None,None),))
+            i_j = (((slice,(None,None,None)),),((slice,(None,None,None)),))
 
         self._cache_lock.acquire_read()
         try:
@@ -719,19 +725,19 @@ class DataFrame(object):
         # TODO: remove this part of the code? 
         return np.array(self._partitions[row_id,col_id] \
                                         [row_idx,col_idx])
-    @staticmethod
-    def _tuple_element_to_query(i):
-        """ Convert a tuple element to an actual query used to index into the 
-        DataFrame. 
-            str -> str
-            int -> int
-            (a,b,c) -> slice(a,b,c)
-        """
-        if isinstance(i,str) or isinstance(i,int):
-            return i
-        elif isinstance(i,tuple):
-            return slice(i[0],i[1],i[2])
-        raise ValueError
+    # @staticmethod
+    # def _tuple_element_to_query(i):
+    #     """ Convert a tuple element to an actual query used to index into the 
+    #     DataFrame. 
+    #         str -> str
+    #         int -> int
+    #         (a,b,c) -> slice(a,b,c)
+    #     """
+    #     if isinstance(i,str) or isinstance(i,int):
+    #         return i
+    #     elif isinstance(i,tuple):
+    #         return slice(i[0],i[1],i[2])
+    #     raise ValueError
 
     @staticmethod
     def _query_to_tuple_element(i):
@@ -743,7 +749,9 @@ class DataFrame(object):
         if isinstance(i,str) or isinstance(i,int):
             return i
         elif isinstance(i,slice):
-            return (i.start,i.stop,i.step)
+            return (slice,(i.start,i.stop,i.step))
+        elif isinstance(i,list):
+            return (list,tuple(i))
         raise ValueError
 
     @staticmethod
@@ -755,9 +763,11 @@ class DataFrame(object):
         """
         if isinstance(i,str) or isinstance(i,int):
             return i
-        elif isinstance(i,tuple) and len(i)==3:
-            return slice(*i)
-        raise ValueError
+        elif isinstance(i,tuple) and i[0] == slice:
+            return slice(*(i[1]))
+        elif isinstance(i,tuple) and i[0] == list:
+            return list(i[1])
+        raise ValueError("Unparseable tuple element: "+str(i))
 
     @staticmethod
     def _tuple_element_to_string(i):
@@ -791,6 +801,7 @@ class DataFrame(object):
         i,j = i_j
         if len(i)>0:
             df,r,c = self._last_query(i_j,ignore_df_cache)
+            print r,c
             return df[r,c]
         else: 
             return self._top_df
