@@ -169,19 +169,22 @@ class Index(OrderedDict):
             if expand is True and i[-1:] == "/":
                 e_index, key_end = self.__find_enclosing_index(i, True)
                 if e_index is None:
-                    return list()
+                    # return list()
+                    return
                 ret = list()
                 node = e_index._OrderedDict__root
                 node = node[1]
                 while node[2] != e_index._OrderedDict__root[2]:
-                    ret.append(i + node[2])
+                    # ret.append(i + node[2])
+                    yield i + node[2]
                     node = node[1]
-                return ret
             else:
-                return [i]
+                # return [i]
+                yield i
         elif isinstance(i, int):
             key = self.__get_key_from_offset(i)
-            return [key]
+            yield key
+            # return [key]
         elif isinstance(i, list) or isinstance(i, np.ndarray):
             if isinstance(i[0], str):
                 ret = list()
@@ -192,11 +195,13 @@ class Index(OrderedDict):
                         node = e_index._OrderedDict__root
                         node = node[1]
                         while node[2] != e_index._OrderedDict__root[2]:
-                            ret.append(one_key + node[2])
+                            yield one_key + node[2]
+                            # ret.append(one_key + node[2])
                             node = node[1]
                     else:
-                        ret.append(one_key)
-                return ret
+                        # ret.append(one_key)
+                        yield one_key
+                # return ret
                     
             elif isinstance(i[0], bool):
                 # bools are also ints, but ints are not bools
@@ -204,14 +209,16 @@ class Index(OrderedDict):
                 if self.__len__() != len(i):
                     raise KeyError("Bool list length must match index key list")
                 #return [self._list[j] for j in xrange(len(self)) if i[j]]
-                return self.__bool_key_list(i)
+                for k in self.__bool_key_list(i):
+                    yield k
 
             elif isinstance(i[0], int):
-                ret = list()
+                # ret = list()
                 for j in i:
                     key = self.__get_key_from_offset(j)
-                    ret.append(key)
-                return ret
+                    # ret.append(key)
+                    yield key
+                # return ret
 
         elif isinstance(i,slice):
             # a slice's members are read-only so we construct a new slice
@@ -231,12 +238,14 @@ class Index(OrderedDict):
                 if slice_start <= ((-1 * count_keys) - 1):
                     # start before beginning and step backward, do nothing
                     if slice_step < 0:
-                        return list()
+                        # return list()
+                        return
                     slice_start = None
                 elif slice_start >= count_keys:
                     # start off the end of the list and step forward, do nothing
                     if slice_step > 0:
-                        return list()
+                        # return list()
+                        return
                     slice_start = None
                 else:
                     slice_start = self.__get_key_from_offset(slice_start)
@@ -251,12 +260,14 @@ class Index(OrderedDict):
                 if slice_stop <= ((-1 * count_keys) - 1):
                     # stop is before beginning and step forward, do nothing
                     if slice_step > 0:
-                        return list()
+                        # return list()
+                        return
                     slice_stop = None
                 elif slice_stop >= (count_keys):
                     # stop is after end but steping backward, do nothing
                     if slice_step < 0:
-                        return list()
+                        # return list()
+                        return
                     slice_stop = None
                 else:
                     """
@@ -267,7 +278,8 @@ class Index(OrderedDict):
                     slice_stop = self.__get_key_from_offset(slice_stop)
 
             i_new = slice(slice_start, slice_stop, slice_step)
-            return self.iter_slice(i_new, "", 0)[0]
+            for k in self.iter_slice(i_new, "", 0)[0]:
+                yield k
         else:
             raise KeyError(i)
 
@@ -320,7 +332,7 @@ class Index(OrderedDict):
             return l
 
         else:
-            keys = self._get_keys(i)
+            keys = list(self._get_keys(i))
             if keys == None:
                 return []
             if len(keys) == 1:
@@ -417,7 +429,7 @@ class Index(OrderedDict):
                     break
 
     def __delitem__(self, i):
-        keys = self._get_keys(i)
+        keys = list(self._get_keys(i))
         if any(not self.key_exists(k) for k in keys):
             raise KeyError(i)
         self.__delete_main(keys)
@@ -492,7 +504,7 @@ class Index(OrderedDict):
         subsequent level
         """
         self._subset_cache = {}
-        keys = self._get_keys(i, False)
+        keys = list(self._get_keys(i, False))
 
         if isinstance(i, list) or len(keys) > 1:
             if not isinstance(vals, list):

@@ -837,7 +837,7 @@ class DataFrame(object):
             index = self._row_index
         else:
             index = self._col_index
-        keys = index._get_keys(query)
+        keys = list(index._get_keys(query))
 
         # If query is a string, append it to the prefix if it is a directory.
         # Otherwise, the query is for exactly one file, so return the key for
