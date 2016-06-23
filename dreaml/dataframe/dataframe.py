@@ -180,14 +180,8 @@ class DataFrame(object):
             M = np.array([[M]])
 
         if self.empty():
-            if row_labels == None: 
-                row_labels = slice(None,None,None)
-            if col_labels == None:
-                col_labels = slice(None,None,None)
-            self.__setitem__((row_labels,col_labels),M)
-            # self.set_dataframe(DataFrame.from_matrix(M,
-            #                                          row_labels=row_labels,
-            #                                          col_labels=col_labels))
+            self.__setitem__((slice(None,None,None),slice(None,None,None)),
+                             M, rows=row_labels, cols=col_labels)
         else:
             self._refresh_index()
             if row_labels == None:
@@ -913,7 +907,7 @@ class DataFrame(object):
                 raise ValueError("Unknown value being set to the DataFrame: " +str(type(val)))
 
 
-    def __setitem__(self, i_j, val):
+    def __setitem__(self, i_j, val, rows = None, cols = None):
         """ Set a portion of the dataframe, passing row/column indices to the
         values stored in val. If the input is not a DataFrame, then try to
         convert the input into a DataFrame. 
@@ -936,8 +930,11 @@ class DataFrame(object):
         top_df = self._top_df
 
         # This probably needs to be fixed for setting subsetted dataframes
-        node = (self._row_query+(DataFrame._query_to_tuple_element(i),),
-                self._col_query+(DataFrame._query_to_tuple_element(j),))
+        if i_j == (slice(None,None,None),slice(None,None,None)):
+            node = self._row_query, self._col_query
+        else:
+            node = (self._row_query+(DataFrame._query_to_tuple_element(i),),
+                    self._col_query+(DataFrame._query_to_tuple_element(j),))
 
         # If the input is a Transform, evaluate the transform and update the
         # computational graph
@@ -974,8 +971,10 @@ class DataFrame(object):
 
 
         row_prefix,col_prefix = self.pwd()
-        rows = self._get_or_make_keys(i, val, axis=0, prefix=row_prefix)
-        cols = self._get_or_make_keys(j, val, axis=1, prefix=col_prefix)
+        if rows == None:
+            rows = self._get_or_make_keys(i, val, axis=0, prefix=row_prefix)
+        if cols == None:
+            cols = self._get_or_make_keys(j, val, axis=1, prefix=col_prefix)
         if isinstance(val,(int, long, float)):
             M = np.array([[val]])
         elif isinstance(val, np.ndarray):
