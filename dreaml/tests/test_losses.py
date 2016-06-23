@@ -4,7 +4,7 @@ from dreaml.loss import *
 from dreaml.objective import SoftmaxRegression
 import numpy as np
 import numpy.random as nprand
-from dreaml.loss.softmax import Softmax
+from dreaml.loss import Softmax
 
 class TestLoss:
     def setUp(self):
