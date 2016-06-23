@@ -136,6 +136,10 @@ class TestDataFrame:
         assert(df["row/","col/"]["path1/",:].pwd() == ("row/path1/","col/"))
         assert(df["row/","col/"][0,1:2]["path1/",:].pwd() ==
             ("row/path1/","col/"))
+        assert(df["row/path1/0","col/path2/0"].pwd() ==
+            ("",""))
+        assert(df["row/","col/"]["path2/0","path1/0"].pwd() ==
+            ("row/","col/"))
 
     def test_dataframe_basic(self):
         print "kdfd"

@@ -119,9 +119,11 @@ class DataFrame(object):
 
     @staticmethod
     def _concat_strings(seq):
+        """ Given a sequence of hashable queries, return the resulting current
+        working directory. """
         s = ""
         for q in seq:
-            if isinstance(q,str):
+            if isinstance(q,str) and q.endswith('/'):
                 s += q
         return s
 
