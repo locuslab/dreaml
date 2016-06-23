@@ -52,10 +52,8 @@ class SGD(ContinuousTransform):
         g = Obj(target_df,*[df[start:end,:] if isinstance(df,DataFrame)
             else df for df in args],**kwargs).g()
 
-        Theta = target_df.get_matrix()
-
         self.niters +=1
         self.batch += self.batch_size
         if self.batch >= n:
             self.batch = 0
-        Theta -= self.step_size*g
+        target_df.rw_matrix -= self.step_size*g

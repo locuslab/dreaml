@@ -12,9 +12,7 @@ class GD(ContinuousTransform):
         self.niters += 1
         res = Obj(target_df,*args,**kwargs).g()
 
-        P = target_df.get_matrix()
-
-        P -= self.step_size*res
+        target_df.rw_matrix -= self.step_size*res
 
     def init_func(self,target_df,Obj,x0,*args,**kwargs):
         rows,cols = Obj.structure(*args,**kwargs)
