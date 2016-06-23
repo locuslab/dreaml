@@ -14,6 +14,7 @@ class TestDataFrame:
         df["row/1","col/1"] = 0
         df["row/1","col/2"] = 1
         df["row/2","col/1"] = 2
+        assert not df["row/2","col/2"].empty()
         df["row/2","col/2"].set_matrix(3)
         assert(df["row/","col/"].shape==(2,2))
         assert(df["row/","col/"].get_matrix() == M).all()
@@ -37,6 +38,27 @@ class TestDataFrame:
 
         df["row/","col/"] = 2*M
         assert(df["row/","col/"].get_matrix() ==2*M).all()
+
+    def test_dataframe_empty(self):
+        df = DataFrame()
+        df["row/1","col/1"] = 0
+        assert not df["row/1","col/1"].empty()
+        try: 
+            df["row/1","col/bad"]
+        except KeyError:
+            pass
+        try: 
+            df["row/bad","col/1"]
+        except KeyError:
+            pass
+        try:
+            df["row/bad","col/bad"]
+        except KeyError:
+            pass
+        assert not df["row/","col/"].empty()
+        assert df["bad/","col/"].empty()
+        assert df["row/","bad/"].empty()
+        assert df["bad/","bad/"].empty()
 
     def test_from_matrix(self):
         matrix1 = np.ones((2,3))
