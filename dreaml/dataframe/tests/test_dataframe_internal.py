@@ -22,3 +22,23 @@ class TestDataFrameInternal:
         assert df._query_to_tuple_element(string) == string
         assert df._query_to_tuple_element(slice_actual) == slice_hash
         assert df._query_to_tuple_element(list_actual) == list_hash
+
+    def test_setitem(self):
+        df = DataFrame()
+        rows = "row/"
+        cols = "col/"
+        M = np.arange(6).reshape(2,3)
+        df.__setitem__((slice(None,None,None),slice(None,None,None)), M)
+        assert (df.get_matrix()==M).all()
+
+        df = DataFrame()
+        df.__setitem__((slice(None,None,None),slice(None,None,None)), M, 
+                       rows=["a","b"],cols=["c","d","e"])
+        assert (df.get_matrix()==M).all()
+
+        df = DataFrame()
+        df["x/","y/"].__setitem__((slice(None,None,None),slice(None,None,None)), M, 
+                       rows=["a","b"],cols=["c","d","e"])
+        print df.rows(),df.cols()
+        assert (df.get_matrix() == M).all()
+        assert (df["x/","y/"].get_matrix() == M).all()

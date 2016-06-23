@@ -182,6 +182,9 @@ class DataFrame(object):
         if self.empty():
             self.__setitem__((slice(None,None,None),slice(None,None,None)),
                              M, rows=row_labels, cols=col_labels)
+            print row_labels,col_labels,M
+            print self.pwd()
+            # self.set_dataframe(DataFrame.from_matrix(M))
         else:
             self._refresh_index()
             if row_labels == None:
@@ -797,7 +800,6 @@ class DataFrame(object):
         i,j = i_j
         if len(i)>0:
             df,r,c = self._last_query(i_j,ignore_df_cache)
-            print r,c
             return df[r,c]
         else: 
             return self._top_df
@@ -973,8 +975,12 @@ class DataFrame(object):
         row_prefix,col_prefix = self.pwd()
         if rows == None:
             rows = self._get_or_make_keys(i, val, axis=0, prefix=row_prefix)
+        else:
+            rows = [row_prefix + k for k in rows]
         if cols == None:
             cols = self._get_or_make_keys(j, val, axis=1, prefix=col_prefix)
+        else:
+            cols = [col_prefix + k for k in cols]
         if isinstance(val,(int, long, float)):
             M = np.array([[val]])
         elif isinstance(val, np.ndarray):
