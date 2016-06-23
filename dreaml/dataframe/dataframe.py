@@ -11,6 +11,7 @@ from time import time
 from threading import Lock, Thread
 import json
 from rwlock import ReadWriteLock as RWLock
+from helpers import is_scalar
 
 class DataFrame(object):
     """ The DataFrame class organizes data in a block sparse array format using
@@ -854,7 +855,7 @@ class DataFrame(object):
             return [prefix + k for k in keys]
         # Otherwise, create new keys
         else:
-            if isinstance(val,(int, long, float)):
+            if is_scalar(val):
                 return [prefix + "0"]
             elif isinstance(val, np.ndarray):
                 return [prefix + str(k) for k in range(val.shape[axis])]
@@ -923,7 +924,8 @@ class DataFrame(object):
             cols = self._get_or_make_keys(j, val, axis=1, prefix=col_prefix)
         else:
             cols = [col_prefix + k for k in cols]
-        if isinstance(val,(int, long, float)):
+        if is_scalar(val):
+            # M = val
             M = val*np.ones((len(rows),len(cols)))
         elif isinstance(val, np.ndarray):
             M = val
@@ -933,13 +935,17 @@ class DataFrame(object):
             raise ValueError("Unknown datatype being set to the DataFrame")
 
         # # First check the cache for a fast set. 
-        if node in self._cache:
-            if self._cache_readonly(node) == True:
-                raise UserWarning("Attempting to set a readonly cache block. " \
-                                  "The result will not persist. ")
-            self._safe_cache_add(node,M,readonly=self._cache_readonly(node))
-            return
-
+        self._cache_lock.acquire_read()
+        try:
+            if node in self._cache:
+                if self._cache_readonly(node) == True:
+                    raise UserWarning("Attempting to set a readonly cache block. " \
+                                      "The result will not persist. ")
+                # self._safe_cache_add(node,M,readonly=self._cache_readonly(node))
+                self._cache_set(node,M)
+                return
+        finally:
+            self._cache_lock.release_read()
         # From here on out, rows and cols are full path names; these go into
         # top_df, not the self dataframe
 
@@ -1007,7 +1013,7 @@ class DataFrame(object):
                     col_count = top_df._col_counts[col_id]
                     # If the matrix constitutes the entire partition, just 
                     # set without slicing
-                    if (M.shape == (row_count, col_count) \
+                    if ((len(rows),len(cols)) == (row_count, col_count) \
                         and (cur_row,cur_col) == (0,0)):  
                         self._partitions[row_id,col_id] = M
                     else:
@@ -1069,7 +1075,7 @@ class DataFrame(object):
         """ Directly write a matrix to the specified rows and columns into the
         underlying DataFrame, bypassing all other checks and constructs. 
         If the underlying dataframe is non-initialized, we write it."""
-        assert(M.shape == (len(rows),len(cols)))
+        assert (M.shape == (len(rows),len(cols))) or is_scalar(M)
         row_val = 0
         for (row_id,row_idx) in self._row_index[rows]:
             col_val = 0
@@ -1498,6 +1504,13 @@ class DataFrame(object):
                             df._row_index.keys(),
                             df._col_index.keys(),
                             readonly)
+
+    def _cache_set(self,i_j,val):
+        if is_scalar(val):
+            A = self._cache[i_j]
+            A = val
+        else:
+            self._cache[i_j] = (val,) + self._cache[i_j][1:]
 
     def _cache_del(self,i_j):
         """ Remove node i_j from the cache """
