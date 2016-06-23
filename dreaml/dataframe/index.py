@@ -169,22 +169,18 @@ class Index(OrderedDict):
             if expand is True and i[-1:] == "/":
                 e_index, key_end = self.__find_enclosing_index(i, True)
                 if e_index is None:
-                    # return list()
                     return
                 ret = list()
                 node = e_index._OrderedDict__root
                 node = node[1]
                 while node[2] != e_index._OrderedDict__root[2]:
-                    # ret.append(i + node[2])
                     yield i + node[2]
                     node = node[1]
             else:
-                # return [i]
                 yield i
         elif isinstance(i, int):
             key = self.__get_key_from_offset(i)
             yield key
-            # return [key]
         elif isinstance(i, list) or isinstance(i, np.ndarray):
             if isinstance(i[0], str):
                 ret = list()
@@ -196,29 +192,22 @@ class Index(OrderedDict):
                         node = node[1]
                         while node[2] != e_index._OrderedDict__root[2]:
                             yield one_key + node[2]
-                            # ret.append(one_key + node[2])
                             node = node[1]
                     else:
-                        # ret.append(one_key)
                         yield one_key
-                # return ret
                     
             elif isinstance(i[0], bool):
                 # bools are also ints, but ints are not bools
                 # so check for bool first
                 if self.__len__() != len(i):
                     raise KeyError("Bool list length must match index key list")
-                #return [self._list[j] for j in xrange(len(self)) if i[j]]
                 for k in self.__bool_key_list(i):
                     yield k
 
             elif isinstance(i[0], int):
-                # ret = list()
                 for j in i:
                     key = self.__get_key_from_offset(j)
-                    # ret.append(key)
                     yield key
-                # return ret
 
         elif isinstance(i,slice):
             # a slice's members are read-only so we construct a new slice
@@ -238,13 +227,11 @@ class Index(OrderedDict):
                 if slice_start <= ((-1 * count_keys) - 1):
                     # start before beginning and step backward, do nothing
                     if slice_step < 0:
-                        # return list()
                         return
                     slice_start = None
                 elif slice_start >= count_keys:
                     # start off the end of the list and step forward, do nothing
                     if slice_step > 0:
-                        # return list()
                         return
                     slice_start = None
                 else:
@@ -260,13 +247,11 @@ class Index(OrderedDict):
                 if slice_stop <= ((-1 * count_keys) - 1):
                     # stop is before beginning and step forward, do nothing
                     if slice_step > 0:
-                        # return list()
                         return
                     slice_stop = None
                 elif slice_stop >= (count_keys):
                     # stop is after end but steping backward, do nothing
                     if slice_step < 0:
-                        # return list()
                         return
                     slice_stop = None
                 else:
@@ -332,21 +317,22 @@ class Index(OrderedDict):
             return l
 
         else:
-            keys = list(self._get_keys(i))
-            if keys == None:
-                return []
-            if len(keys) == 1:
-                e_index, key_end = self.__find_enclosing_index(keys[0], False)
+            len_keys = sum(1 for _ in self._get_keys(i))
+            if len_keys == 0:
+                raise KeyError(i)
+            if len_keys == 1:
+                key = next(self._get_keys(i))
+                e_index, key_end = self.__find_enclosing_index(key, False)
                 if e_index is None or not dict.__contains__(e_index, key_end):
-                    raise KeyError(keys[0])
-                if e_index is not None and keys[0][-1] != "/":
+                    raise KeyError(key)
+                if e_index is not None and key[-1] != "/":
                     return dict.__getitem__(e_index, key_end)
                 elif not key_end == None:
                     return key_end
 
-            elif len(keys) > 1:
+            elif len_keys > 1:
                 l = list()
-                for k in keys:
+                for k in self._get_keys(i):
                     e_index, key_end = self.__find_enclosing_index(k, False)
                     if e_index is None:
                         raise KeyError(k, " enclosing index was not found")
