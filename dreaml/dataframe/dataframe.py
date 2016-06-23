@@ -193,6 +193,19 @@ class DataFrame(object):
         else:
             self.__setitem__((slice(None,None,None),slice(None,None,None)),M_df)
 
+    @property
+    def r_matrix(self):
+        return self.get_matrix(readonly=True)
+
+    @property
+    def rw_matrix(self):
+        return self.get_matrix(readonly=False)
+
+    @rw_matrix.setter
+    def rw_matrix(self,val):
+        self.set_matrix(val)
+
+
     def get_matrix(self,readonly=False,typ=None):
         """ Return a matrix containing the underlying elements of the DataFrame.
 
@@ -911,7 +924,7 @@ class DataFrame(object):
         else:
             cols = [col_prefix + k for k in cols]
         if isinstance(val,(int, long, float)):
-            M = np.array([[val]])
+            M = val*np.ones((len(rows),len(cols)))
         elif isinstance(val, np.ndarray):
             M = val
         elif isinstance(val, DataFrame):

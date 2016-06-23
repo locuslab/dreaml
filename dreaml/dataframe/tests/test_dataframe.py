@@ -503,3 +503,22 @@ class TestDataFrame:
         assert(d["partitions"] == {
             "(0, 0)" : 0
         })
+
+    def test_matrix_property(self):
+        row = "row/"
+        col = "col/"
+        df = DataFrame()
+        matrix = np.arange(8).reshape(4,2)
+        df[row,col] = matrix
+
+        assert (df.r_matrix == matrix).all()
+        assert (df[row,col].r_matrix == matrix).all()
+
+        assert (df[row,col].rw_matrix == matrix).all()
+
+        df[row,col].rw_matrix = np.ones((4,2))
+        assert (df[row,col].rw_matrix == np.ones((4,2))).all()
+
+        df[row,col].rw_matrix = 2
+
+
