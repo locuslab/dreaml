@@ -27,6 +27,10 @@ class TestIndex:
         assert new_index[2] == ["value2"]
         assert new_index[3] == "value3"
 
+        try: 
+            new_index[None]
+        except KeyError:
+            pass
         del new_index
 
     def test_index_bulk(self):
