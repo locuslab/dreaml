@@ -179,22 +179,15 @@ class DataFrame(object):
         if isinstance(M,(int,float,long,complex)):
             M = np.array([[M]])
 
-        if self.empty():
-            self.__setitem__((slice(None,None,None),slice(None,None,None)),
-                             M, rows=row_labels, cols=col_labels)
-            print row_labels,col_labels,M
-            print self.pwd()
-            # self.set_dataframe(DataFrame.from_matrix(M))
-        else:
+        if not self.empty():
             self._refresh_index()
             if row_labels == None:
                 row_labels = self._row_index.keys()
             if col_labels == None:
                 col_labels = self._col_index.keys()
-            # self.__setitem__((row_labels,col_labels),M)
-            self.set_dataframe(DataFrame.from_matrix(M,
-                                                     row_labels=row_labels,
-                                                     col_labels=col_labels))
+
+        self.__setitem__((slice(None,None,None),slice(None,None,None)),
+                         M, rows=row_labels, cols=col_labels)
 
     def set_dataframe(self,M_df):
         """ Set the DataFrame's contents to match the given DataFrame M_df 
