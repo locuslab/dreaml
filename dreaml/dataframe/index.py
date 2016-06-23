@@ -429,15 +429,13 @@ class Index(OrderedDict):
                     break
 
     def __delitem__(self, i):
-        keys = list(self._get_keys(i))
-        if any(not self.key_exists(k) for k in keys):
+        if any(not self.key_exists(k) for k in self._get_keys(i)):
             raise KeyError(i)
-        self.__delete_main(keys)
+        self.__delete_main(self._get_keys(i))
         self._subset_cache = {}
 
     def __delete_main(self, keys):
         """ Delete items for indexing. """
-        files_count = len(keys)
         for k in keys:
 
             if k[-1] is '/':
@@ -459,7 +457,7 @@ class Index(OrderedDict):
                     self._list.remove(k)
                 self._full_key_list = None
             
-        self._nfiles -= files_count
+            self._nfiles -= 1
         assert self._nfiles >= 0
 
 
