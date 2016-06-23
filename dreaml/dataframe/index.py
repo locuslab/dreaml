@@ -281,7 +281,7 @@ class Index(OrderedDict):
                 return self._subset_cache[i]
             else:
                 loc = i.find('/')
-                if loc >= 0 and i[-1] == '/':
+                if loc >= 0 and i.endswith('/'):
                     if dict.__contains__(self,i[:loc+1]):
                         if loc+1 >= len(i):
                             return dict.__getitem__(self,i)
