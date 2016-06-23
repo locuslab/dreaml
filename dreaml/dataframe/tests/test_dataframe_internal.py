@@ -44,3 +44,10 @@ class TestDataFrameInternal:
 
         df["x/","y/"].__setitem__((slice(None,None,None),slice(None,None,None)),2)
         assert (df.get_matrix() == 2).all()
+
+    def test_simple_query(self):
+        df = DataFrame.from_matrix(np.arange(6).reshape(2,3))
+        assert df._is_simple_query()
+        assert df["row/","col/"]._is_simple_query()
+        assert df["row/","col/"][:,:]._is_simple_query()
+        assert df["row/","col/"][0:1,2:3]._is_simple_query()
