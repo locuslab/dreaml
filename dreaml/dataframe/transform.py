@@ -88,15 +88,19 @@ class BatchTransform(Transform):
 class ContinuousTransform(Transform):
 
     def __init__(self, *args, **kwargs):
+        self.threaded = kwargs.pop('threaded',True)
         self.delay = kwargs.pop('delay',0)
         self.max_iters = kwargs.pop('max_iters',None)
         super(ContinuousTransform,self).__init__(*args,**kwargs)
 
     def apply(self, target_df):
         self.init_func(target_df, *self.args, **self.kwargs)
-        thread = Thread(target = self._continuous_wrapper, args=(target_df,))
-        thread.start()
-        return thread
+        if self.threaded:
+            thread = Thread(target = self._continuous_wrapper, args=(target_df,))
+            thread.start()
+            return thread
+        else: 
+            self._continuous_wrapper(target_df)
 
     @abstractmethod
     def init_func(self, target_df, *args, **kwargs):
