@@ -502,28 +502,27 @@ class Index(OrderedDict):
         subsequent level
         """
         self._subset_cache = {}
-        keys = list(self._get_keys(i, False))
+        len_keys = sum(1 for _ in self._get_keys(i,False))
 
-        if isinstance(i, list) or len(keys) > 1:
+        if isinstance(i, list) or len_keys > 1:
             if not isinstance(vals, list):
                 # Internally, all keys expand into a list but if it is just
                 # 1 element we allow it to count as a singleton
                 raise ValueError("If key is a list, or expands to a list," +
                                  "vals must also be a list")
-            if not len(keys) == len(vals):
-                raise ValueError("Found ", len(keys), " keys and ", len(vals), 
+            if not len_keys == len(vals):
+                raise ValueError("Found ", len_keys, " keys and ", len(vals), 
                                  "vals")
 
         # if none of the keys exist, insert them
-        if not any(self.key_exists(k) for k in keys):
+        if not any(self.key_exists(k) for k in self._get_keys(i, False)):
             self._full_key_list = None
             self.__insert_main(i, vals, True)
         # if the keys all exist, set their corresponding values
-        elif all(self.key_exists(k) for k in keys):
+        elif all(self.key_exists(k) for k in self._get_keys(i, False)):
             if not isinstance(vals, list):
                 vals = [vals]
-            l = list()
-            for k,v in zip(keys, vals):
+            for k,v in zip(self._get_keys(i, False), vals):
                 e_index, key_end = self.__find_enclosing_index(k, False)
                 OrderedDict.__setitem__(e_index, key_end, v)
                 # since the keys are unchanged we don't need to update the
