@@ -39,10 +39,8 @@ class TestDataFrameInternal:
         df = DataFrame()
         df["x/","y/"].__setitem__((slice(None,None,None),slice(None,None,None)), M, 
                        rows=["a","b"],cols=["c","d","e"])
-        print df.rows(),df.cols()
         assert (df.get_matrix() == M).all()
         assert (df["x/","y/"].get_matrix() == M).all()
 
         df["x/","y/"].__setitem__((slice(None,None,None),slice(None,None,None)),2)
-        print df["x/","y/"].get_matrix()
         assert (df.get_matrix() == 2).all()

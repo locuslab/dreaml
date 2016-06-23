@@ -925,8 +925,8 @@ class DataFrame(object):
         else:
             cols = [col_prefix + k for k in cols]
         if is_scalar(val):
-            # M = val
-            M = val*np.ones((len(rows),len(cols)))
+            M = val
+            # M = val*np.ones((len(rows),len(cols)))
         elif isinstance(val, np.ndarray):
             M = val
         elif isinstance(val, DataFrame):
@@ -998,10 +998,12 @@ class DataFrame(object):
         # From here on out we assume its a DataFrame. First we must evict all
         # conflicts, since the matrix is being changed. 
         self._safe_cache_find_and_evict(node)
-
         # Manually update the dataframe
         if all_rows_exist and all_cols_exist and all_parts_exist:
-            top_df._write_matrix_to(M,rows,cols)
+            if is_scalar(M):
+                top_df._write_scalar_to(M,rows,cols)
+            else:
+                top_df._write_matrix_to(M,rows,cols)
         else:
             # Create a new column index partition
             # Create a new partition block
@@ -1015,13 +1017,22 @@ class DataFrame(object):
                     # set without slicing
                     if ((len(rows),len(cols)) == (row_count, col_count) \
                         and (cur_row,cur_col) == (0,0)):  
-                        self._partitions[row_id,col_id] = M
+                        if is_scalar(M):
+                            self._partitions[row_id,col_id] = \
+                                M*np.ones((len(rows),len(cols)))
+                        else:
+                            self._partitions[row_id,col_id] = M
                     else:
                     # Otherwise, select the parts of the matrix that are
                     # applicable and set them for each partition
-                        self._partitions[row_id,col_id] \
-                            = M[cur_row:cur_row+top_df._row_counts[row_id], \
-                                cur_col:cur_col+top_df._col_counts[col_id]]
+                        if is_scalar(M):
+                            self._partitions[row_id,col_id] = \
+                                M*np.ones((top_df._row_counts[row_id],
+                                           top_df._col_counts[col_id]))
+                        else:
+                            self._partitions[row_id,col_id] \
+                                = M[cur_row:cur_row+top_df._row_counts[row_id], \
+                                    cur_col:cur_col+top_df._col_counts[col_id]]
                     cur_col += top_df._col_counts[col_id]
                 cur_row += top_df._row_counts[row_id]
             
@@ -1075,7 +1086,7 @@ class DataFrame(object):
         """ Directly write a matrix to the specified rows and columns into the
         underlying DataFrame, bypassing all other checks and constructs. 
         If the underlying dataframe is non-initialized, we write it."""
-        assert (M.shape == (len(rows),len(cols))) or is_scalar(M)
+        assert (M.shape == (len(rows),len(cols)))
         row_val = 0
         for (row_id,row_idx) in self._row_index[rows]:
             col_val = 0
@@ -1091,6 +1102,27 @@ class DataFrame(object):
                 self._partitions[row_id,col_id] \
                                 [row_idx,col_idx] \
                                 = M[row_val,col_val]
+                col_val += 1
+            row_val += 1
+
+
+    def _write_scalar_to(self,v,rows,cols): 
+        """ Directly write a matrix to the specified rows and columns into the
+        underlying DataFrame, bypassing all other checks and constructs. 
+        If the underlying dataframe is non-initialized, we write it."""
+        assert is_scalar(v)
+        row_val = 0
+        for (row_id,row_idx) in self._row_index[rows]:
+            col_val = 0
+            for (col_id,col_idx) in self._col_index[cols]:
+                # set it element-wise
+                if (row_id,col_id) not in self._partitions:
+                    self._partitions[row_id,col_id] = \
+                        np.zeros((self._row_counts[row_id],
+                                  self._col_counts[col_id]))
+                assert((row_id,col_id) in self._partitions)
+                assert((row_idx,col_idx) < self._partitions[row_id,col_id].shape)
+                self._partitions[row_id,col_id][row_idx,col_idx] = v
                 col_val += 1
             row_val += 1
 
@@ -1508,7 +1540,7 @@ class DataFrame(object):
     def _cache_set(self,i_j,val):
         if is_scalar(val):
             A = self._cache[i_j]
-            A = val
+            A[0][:] = val
         else:
             self._cache[i_j] = (val,) + self._cache[i_j][1:]
 
