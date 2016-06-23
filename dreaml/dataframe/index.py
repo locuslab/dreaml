@@ -739,23 +739,22 @@ class Index(OrderedDict):
             return self, key
 
     def __bool_key_list(self, i):
-        """ Given a bool list i, return a list of keys for each True index
+        """ Given a bool list i, return a generator of keys for each True index
 
         Args:
-            A list i which has the same number of elements as the number
+            An iterable i which has the same number of elements as the number
             of files in the Index. This includes files in subdirectories
             but does not include the directories themselves
 
         Returns:
-            a list of keys matching the True indices in the list i
+            a generator of keys matching the True indices in the list i
         """
         if self._full_key_list is None:
             self.refresh_full_key_list()
-        ret = list()
+
         for i_key, i_bool in zip(self._full_key_list, i):
             if i_bool is True:
-                ret.append(i_key)
-        return ret
+                yield i_key
 
     def __get_key_from_offset(self, offset):
         if self._full_key_list is None:
