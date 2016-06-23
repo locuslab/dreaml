@@ -127,16 +127,6 @@ class DataFrame(object):
                 s += q
         return s
 
-    # def shape(self):
-    #     """ Returns the shape of the DataFrame.
-
-    #     Returns: 
-    #         A two-tuple containing the number of rows and the number of columns
-    #         in the DataFrame. 
-    #     """
-    #     self._refresh_index()
-    #     return (len(self._row_index),len(self._col_index))
-
     @property
     def shape(self):
         """ Returns the shape of the DataFrame.
@@ -155,7 +145,8 @@ class DataFrame(object):
         shape are equal to 0. 
 
         Returns: 
-            A boolean indicating whether the DataFrame has 0 size. 
+            A boolean indicating whether the DataFrame has 0 size in its
+            structure.
 
         Note: 
             This ignores the values or presence of of the actual underlying matrices. 
@@ -219,9 +210,6 @@ class DataFrame(object):
         Returns: A matrix whose contents are identical to that of the DataFrame.
         """
         self._refresh_index()
-        # This is a useless assert, it is the definition of shape
-        # assert((len(self._row_index),len(self._col_index))
-        #         == self.shape)
 
         i_j = (self._row_query,self._col_query)
         if i_j == ((),()):
@@ -236,16 +224,9 @@ class DataFrame(object):
                 if self._cache_readonly((i_j)): 
                     self._cache_set_readonly(i_j, readonly)
                 A = self._cache_fetch(i_j)
-                # if A.shape != self.shape:
-                #     print A.shape, self.shape
-                # This assert is not always true. If another thread is in the
-                # process of adding more rows/columns, then the sizes will mis-match
-                # to the cached entry. However, this is OK, since the new
-                # rows/columms won't be present in the cache yet. 
                 return A
         finally:
             self._cache_lock.release_read()
-        # print "cache miss :("+str(i_j)+str(self.shape)
 
         # If matrix is empty, raise error
         if self.empty():
@@ -420,11 +401,14 @@ class DataFrame(object):
             return np.vstack(row_list)
 
     def _index_partition(self,p_index,m_index):
+        """ Given a partition index and a matrix index, return the corresponding
+        submatrix of the indexed partition. If it doesn't exist, initialize
+        it to zeros. """
         if p_index in self._partitions:
             return self._partitions[p_index][m_index]
         else:
             rp,cp = p_index
-            return np.zeros((self._row_counts[rp],self._col_counts[cp]))
+            return np.zeros((self._row_counts[rp],self._col_counts[cp]))[m_index]
 
     def set_structure(self,rows,cols):
         """ Sets the rows and columns labels of the DataFrame to the given lists
@@ -692,41 +676,7 @@ class DataFrame(object):
                 self._df_cache_add(k_l,df_subset)
                 return df_subset
 
-
-        # This code doesn't actually run at all. __getitem__ currently just
-        # returns the dataframe and ignores type. Type should be moved to
-        # get_matrix()
-
-        # Otherwise, actually return the data in the format given by type
-        # Should we check for membership of i,j or just let the built in 
-        # dict.__getitem__ handle the error for missing keys?
-        row_index = self._row_index.subset(i)
-        col_index = self._col_index.subset(j)
-        row_id = row_index[0][0]
-        col_id = col_index[0][0]
-
-        assert(all(row_index[0][0] == v[0] for v in row_index.values()) and \
-            all(col_index[0][0] == v[0] for v in col_index.values()))
-        row_idx = [[v[1]] for v in row_index.values()]
-        col_idx = [v[1] for v in col_index.values()]
-
-        # For now just return the np array
-        # TODO: remove this part of the code? 
-        return np.array(self._partitions[row_id,col_id] \
-                                        [row_idx,col_idx])
-    # @staticmethod
-    # def _tuple_element_to_query(i):
-    #     """ Convert a tuple element to an actual query used to index into the 
-    #     DataFrame. 
-    #         str -> str
-    #         int -> int
-    #         (a,b,c) -> slice(a,b,c)
-    #     """
-    #     if isinstance(i,str) or isinstance(i,int):
-    #         return i
-    #     elif isinstance(i,tuple):
-    #         return slice(i[0],i[1],i[2])
-    #     raise ValueError
+        raise ValueError("Other types not implemented yet.")
 
     @staticmethod
     def _query_to_tuple_element(i):
@@ -943,18 +893,7 @@ class DataFrame(object):
             # # Right now, run the init and refresh the transform's variables
             # # on every step
             target_df = self._reindex(node)
-            # val.apply_init(target_df)
-            # self._refresh(val)
-            # # Always apply once, so that all entries are initialized
-            # val.apply_to(target_df)
-
-            # # Now add to graph, since the entries exist now. 
-            # if not val.subroutine:
             self._add_to_graph(node,status=self.STATUS_BLUE,transform=val)
-
-            # # If continuous, spawn the long running process
-            # if val.continuous: 
-            #     self._threads[node] = val.apply_continuous(target_df)
             thread = val.apply(target_df)
             if thread is not None:
                 self._threads[node] = thread
@@ -1072,8 +1011,7 @@ class DataFrame(object):
             # row and column indexes, since the df_cache logic uses the
             # indices to determine overlap. 
             self._df_cache_flush(node)
-        # self._cache_lock.release()
-        # self._cache_add(node,M)
+
         if no_rows_exist or no_cols_exist:
             for k_l in self._get_implicit_dependents(node):
                 if self._graph.node[k_l]["status"] != self.STATUS_BLUE:
@@ -1136,12 +1074,6 @@ class DataFrame(object):
                                 = M[row_val,col_val]
                 col_val += 1
             row_val += 1
-
-    ###########################################################################
-    # Stack related functions for variable length partitions                  #
-    ###########################################################################
-    # def _push(self,val,axis=0):
-
 
     ###########################################################################
     # Graph related functions                                                 #
@@ -1255,10 +1187,6 @@ class DataFrame(object):
         row_is_subdirectory = is_subdirectory(i_str,k_str)
         col_is_subdirectory = is_subdirectory(j_str,l_str)
         return row_is_subdirectory,col_is_subdirectory
-        # if not row_is_subdirectory or not col_is_subdirectory:
-        #     return False
-        # else:
-        #     return True
 
     def _get_implicit_dependents(self,i_j):
         """ Return all nodes implicitly dependent on i_j """
@@ -1273,7 +1201,6 @@ class DataFrame(object):
                                                              ignore_df_cache=True)
                 if (any(r in rows for r in rows0) \
                     and any(c in cols for c in cols0)):
-                    # or self._is_sub_directory(i_j,i0_j0):
                     dependents.add(i0_j0)
         return dependents
 
@@ -1342,14 +1269,6 @@ class DataFrame(object):
         row_ids = [v[0] for v in top_df._row_index[full_rows]]
         col_ids = [v[0] for v in top_df._col_index[full_cols]]
 
-        # for row_id in row_ids:
-        #     for col_id in col_ids:
-        #         if (row_id,col_id) not in top_df._partitions:
-        #             # Currently set to a numpy array of zeros
-        #             # TODO: set according to type specified
-        #             top_df._partitions[row_id,col_id] \
-        #                 = np.zeros((top_df._row_counts[row_id], \
-        #                             top_df._col_counts[col_id]))
         if self.hash() in top_df._graph and self.is_transform():
             top_df._refresh(top_df._graph.node[self.hash()]["transform"])
         top_df._df_cache_flush(self.hash()) 
@@ -1374,16 +1293,13 @@ class DataFrame(object):
                 # This order matters, since the eviction needs to write
                 # back to the dataframe according to the old value of the df
                 # cache. 
-                # self._cache_lock.acquire()
                 if k_l in self._cache:
                     self._safe_cache_evict(k_l)
-                # self._cache_lock.release()
                 self._df_cache_del(k_l)
 
     def _unsafe_df_cache_flush(self,i_j):
         """ Remove all cached dataframe entries that are dependent on i_j """
         if i_j in self._df_cache:
-            # del self._df_cache[i_j]
             self._df_cache_del(i_j)
             if i_j in self._cache:
                 self._cache_evict(i_j)
@@ -1408,12 +1324,8 @@ class DataFrame(object):
                 d = self._reindex((df._row_query,df._col_query))
                 args[i] = d
                 query = (args[i]._row_query,args[i]._col_query)
-                # self._cache_lock.acquire()
                 if query in self._cache:
                     self._safe_cache_evict(query)
-                # self._cache_lock.release()
-                # I think this is unnecessary: the df has not changed shape here
-                # self._df_cache_flush(query)
         T.args = tuple(args)
         for k,df in T.kwargs.iteritems():
             if isinstance(df,DataFrame):
@@ -1425,7 +1337,7 @@ class DataFrame(object):
         index and counts. This should be called whenever the DataFrame's size
         has changed. """
         new_df = self._reindex((self._row_query,self._col_query))
-        # new_df = d[r,c]
+
         self._row_index = new_df._row_index
         self._col_index = new_df._col_index
         self._row_counts = new_df._row_counts
@@ -1523,7 +1435,6 @@ class DataFrame(object):
         (rows,cols) = self._get_full_rows_and_cols(i_j, ignore_df_cache=True)
         # Return a list of nodes that have a common intersection with i_j
 
-        # self._cache_lock.acquire()
         evictions = set()
         for (i0_j0) in self._cache:
             if DataFrame._node_directory_overlap(i_j,i0_j0):
@@ -1531,7 +1442,6 @@ class DataFrame(object):
                 if (any(r in rows for r in rows0) \
                     and any(c in cols for c in cols0)):
                     evictions.add(i0_j0)
-        # self._cache_lock.release()
         return evictions
 
     def _safe_cache_evict(self,i_j):
