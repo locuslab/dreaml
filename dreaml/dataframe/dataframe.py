@@ -342,10 +342,6 @@ class DataFrame(object):
             return True
         return False
 
-    @staticmethod
-    def _is_encoded_slice(s):
-        return isinstance(s,tuple) and len(s)==3
-
     def _fast_get_matrix(self):
         """ Return the underlying matrix for the dataframe, assuming the query
         is simple for optimized retrieval. """
@@ -696,6 +692,14 @@ class DataFrame(object):
         raise ValueError("Other types not implemented yet.")
 
     @staticmethod
+    def _is_encoded_slice(s):
+        return isinstance(s,tuple) and s[0] is slice
+
+    @staticmethod
+    def _is_encoded_list(s):
+        return isinstance(s,tuple) and s[0] is list
+
+    @staticmethod
     def _query_to_tuple_element(i):
         """ Convert a query to a tuple used to hash into dictionaries. 
             str -> str
@@ -719,9 +723,9 @@ class DataFrame(object):
         """
         if isinstance(i,str) or isinstance(i,int):
             return i
-        elif isinstance(i,tuple) and i[0] == slice:
+        elif DataFrame._is_encoded_slice(i):
             return slice(*(i[1]))
-        elif isinstance(i,tuple) and i[0] == list:
+        elif DataFrame._is_encoded_list(i):
             return list(i[1])
         raise ValueError("Unparseable tuple element: "+str(i))
 
