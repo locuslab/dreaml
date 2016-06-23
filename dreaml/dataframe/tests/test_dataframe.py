@@ -519,6 +519,15 @@ class TestDataFrame:
         df[row,col].rw_matrix = np.ones((4,2))
         assert (df[row,col].rw_matrix == np.ones((4,2))).all()
 
-        df[row,col].rw_matrix = 2
+        try: 
+            df[row,col].rw_matrix = 2
+        except ValueError:
+            pass
+
+        df[row,col].rw_matrix[:] = 2
+        assert (df[row,col].rw_matrix == 2*np.ones((4,2))).all()
+
+        df[row,col].rw_matrix = 2*matrix
+        assert (df[row,col].rw_matrix == 2*matrix).all()
 
 

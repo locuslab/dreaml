@@ -174,7 +174,6 @@ class DataFrame(object):
                 row_labels = self._row_index.keys()
             if col_labels == None:
                 col_labels = self._col_index.keys()
-
         self.__setitem__((slice(None,None,None),slice(None,None,None)),
                          M, rows=row_labels, cols=col_labels)
 
@@ -204,6 +203,10 @@ class DataFrame(object):
 
     @rw_matrix.setter
     def rw_matrix(self,val):
+        # To achieve similarity in usage to normal arrays, a set without any
+        # indexing should be a single element set. 
+        if is_scalar(val):
+            val = np.array([[val]])
         self.set_matrix(val)
 
 
@@ -929,11 +932,13 @@ class DataFrame(object):
             # M = val*np.ones((len(rows),len(cols)))
         elif isinstance(val, np.ndarray):
             M = val
+            if M.shape != (len(rows),len(cols)):
+                raise ValueError("Shape mismatch: " + str(M.shape) + " != "
+                                 + str((len(rows),len(cols))))
         elif isinstance(val, DataFrame):
             M = val.get_matrix()
         else:
             raise ValueError("Unknown datatype being set to the DataFrame")
-
         # # First check the cache for a fast set. 
         self._cache_lock.acquire_read()
         try:
