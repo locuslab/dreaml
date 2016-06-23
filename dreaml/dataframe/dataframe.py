@@ -206,6 +206,9 @@ class DataFrame(object):
         # To achieve similarity in usage to normal arrays, a set without any
         # indexing should be a single element set. 
         if is_scalar(val):
+            if self.shape != (1,1):
+                raise ValueError("Shape mismatch (trying to set a matrix with"
+                    +" size different from 1 by 1 to a scalar. ")
             val = np.array([[val]])
         self.set_matrix(val)
 
