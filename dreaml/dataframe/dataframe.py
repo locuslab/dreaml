@@ -993,8 +993,6 @@ class DataFrame(object):
         else: 
             row_ids = OrderedDict.fromkeys(top_df._row_index[r][0] \
                                            for r in rows_iter()).keys()
-        rows = list(rows_iter())
-        cols = list(cols_iter())
 
         # require all partitions to already exist or not exist
         all_pairs = itertools.product(set(row_ids),set(col_ids))
@@ -1020,6 +1018,8 @@ class DataFrame(object):
         self._safe_cache_find_and_evict(node)
         # Manually update the dataframe
         if all_rows_exist and all_cols_exist and all_parts_exist:
+            rows = list(rows_iter())
+            cols = list(cols_iter())
             if is_scalar(M):
                 top_df._write_scalar_to(M,rows,cols)
             else:
@@ -1035,11 +1035,11 @@ class DataFrame(object):
                     col_count = top_df._col_counts[col_id]
                     # If the matrix constitutes the entire partition, just 
                     # set without slicing
-                    if ((len(rows),len(cols)) == (row_count, col_count) \
+                    if ((len_rows,len_cols) == (row_count, col_count) \
                         and (cur_row,cur_col) == (0,0)):  
                         if is_scalar(M):
                             self._partitions[row_id,col_id] = \
-                                M*np.ones((len(rows),len(cols)))
+                                M*np.ones((len_rows,len_cols))
                         else:
                             self._partitions[row_id,col_id] = M
                     else:
