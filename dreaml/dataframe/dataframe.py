@@ -11,7 +11,7 @@ from time import time
 from threading import Lock, Thread
 import json
 from rwlock import ReadWriteLock as RWLock
-from helpers import is_scalar
+from helpers import is_scalar, len_iter
 
 class DataFrame(object):
     """ The DataFrame class organizes data in a block sparse array format using
@@ -814,8 +814,9 @@ class DataFrame(object):
         and return the partition id.
         """
         col_id = len(self._col_counts)
-        self._col_counts.append(len(col_keys))
-        col_vals = [(col_id, col_idx) for col_idx in range(len(col_keys))]
+        len_col_keys = sum(1 for _ in col_keys)
+        self._col_counts.append(len_col_keys)
+        col_vals = [(col_id, col_idx) for col_idx in range(len_col_keys)]
         self._col_index[col_keys] = col_vals
         return col_id
 
@@ -824,8 +825,9 @@ class DataFrame(object):
         and return the partition id. 
         """
         row_id = len(self._row_counts)
-        self._row_counts.append(len(row_keys))
-        row_vals = [(row_id, row_idx) for row_idx in range(len(row_keys))]
+        len_row_keys = sum(1 for _ in row_keys)
+        self._row_counts.append(len_row_keys)
+        row_vals = [(row_id, row_idx) for row_idx in range(len_row_keys)]
         self._row_index[row_keys] = row_vals
         return row_id
 
@@ -837,7 +839,6 @@ class DataFrame(object):
             index = self._row_index
         else:
             index = self._col_index
-        keys = list(index._get_keys(query))
 
         # If query is a string, append it to the prefix if it is a directory.
         # Otherwise, the query is for exactly one file, so return the key for
@@ -855,20 +856,20 @@ class DataFrame(object):
                 target_index  = val._row_index
             else:
                 target_index = val._col_index
-            return [prefix + k for k in target_index.keys()]
+            return (prefix + k for k in target_index.iterkeys())
 
         # If the val is a single scalar, then return the exact key given by the
         # query if it is a file, otherwise append a 0 to the directory
 
         # If the keys already exist, then reconstruct the whole keys 
-        if len(keys) > 0:
-            return [prefix + k for k in keys]
+        if next(index._get_keys(query),None) != None:
+            return (prefix + k for k in index._get_keys(query))
         # Otherwise, create new keys
         else:
             if is_scalar(val):
                 return [prefix + "0"]
             elif isinstance(val, np.ndarray):
-                return [prefix + str(k) for k in range(val.shape[axis])]
+                return (prefix + str(k) for k in range(val.shape[axis]))
             else:
                 raise ValueError("Unknown value being set to the DataFrame: " +str(type(val)))
 
@@ -926,22 +927,27 @@ class DataFrame(object):
 
 
         row_prefix,col_prefix = self.pwd()
-        if rows == None:
-            rows = self._get_or_make_keys(i, val, axis=0, prefix=row_prefix)
-        else:
-            rows = [row_prefix + k for k in rows]
-        if cols == None:
-            cols = self._get_or_make_keys(j, val, axis=1, prefix=col_prefix)
-        else:
-            cols = [col_prefix + k for k in cols]
+        def rows_iter():
+            if rows == None:
+                return self._get_or_make_keys(i, val, axis=0, prefix=row_prefix)
+            else:
+                return (row_prefix + k for k in rows)
+        def cols_iter():
+            if cols == None:
+                return self._get_or_make_keys(j, val, axis=1, prefix=col_prefix)
+            else:
+                return (col_prefix + k for k in cols)
+        len_rows = len_iter(rows_iter())
+        len_cols = len_iter(cols_iter())
+
         if is_scalar(val):
             M = val
             # M = val*np.ones((len(rows),len(cols)))
         elif isinstance(val, np.ndarray):
             M = val
-            if M.shape != (len(rows),len(cols)):
+            if M.shape != (len_rows,len_cols):
                 raise ValueError("Shape mismatch: " + str(M.shape) + " != "
-                                 + str((len(rows),len(cols))))
+                                 + str((len_rows,len_cols)))
         elif isinstance(val, DataFrame):
             M = val.get_matrix()
         else:
@@ -962,10 +968,10 @@ class DataFrame(object):
         # top_df, not the self dataframe
 
         # "all in or all out" requirement
-        all_rows_exist = all(k in top_df._row_index for k in rows)
-        all_cols_exist = all(k in top_df._col_index for k in cols)
-        no_rows_exist = all(k not in top_df._row_index for k in rows)
-        no_cols_exist = all(k not in top_df._col_index for k in cols)
+        all_rows_exist = all(k in top_df._row_index for k in rows_iter())
+        all_cols_exist = all(k in top_df._col_index for k in cols_iter())
+        no_rows_exist = all(k not in top_df._row_index for k in rows_iter())
+        no_cols_exist = all(k not in top_df._col_index for k in cols_iter())
 
         assert(all_rows_exist or no_rows_exist)
         assert(all_cols_exist or no_cols_exist)
@@ -974,6 +980,8 @@ class DataFrame(object):
         # are updating, the underlying matrix is written, 
         # and cache eviction are done
         # If this is going to change the row/column structure, stop all dependents
+        rows = list(rows_iter())
+        cols = list(cols_iter())
         if no_cols_exist: 
             col_id = top_df._add_cols(cols)
             col_ids = [col_id]
