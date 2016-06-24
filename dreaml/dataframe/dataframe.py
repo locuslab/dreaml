@@ -980,21 +980,21 @@ class DataFrame(object):
         # are updating, the underlying matrix is written, 
         # and cache eviction are done
         # If this is going to change the row/column structure, stop all dependents
-        rows = list(rows_iter())
-        cols = list(cols_iter())
         if no_cols_exist: 
-            col_id = top_df._add_cols(cols)
+            col_id = top_df._add_cols(list(cols_iter()))
             col_ids = [col_id]
         else: 
-            col_ids = OrderedDict.fromkeys([v[0] \
-                for v in top_df._col_index[cols]]).keys()
+            col_ids = OrderedDict.fromkeys(top_df._col_index[c][0] 
+                                           for c in cols_iter()).keys()
         #     col_p_id = self._col_index[cols[0]][0]
         if no_rows_exist:
-            row_id = top_df._add_rows(rows)
+            row_id = top_df._add_rows(list(rows_iter()))
             row_ids = [row_id]
         else: 
-            row_ids = OrderedDict.fromkeys([v[0] \
-                for v in top_df._row_index[rows]]).keys()
+            row_ids = OrderedDict.fromkeys(top_df._row_index[r][0] \
+                                           for r in rows_iter()).keys()
+        rows = list(rows_iter())
+        cols = list(cols_iter())
 
         # require all partitions to already exist or not exist
         all_pairs = itertools.product(set(row_ids),set(col_ids))
