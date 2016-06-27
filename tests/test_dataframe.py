@@ -1,4 +1,4 @@
-from dreaml.dataframe.dataframe import DataFrame
+from dreaml import DataFrame
 import dreaml
 import numpy as np
 import json
