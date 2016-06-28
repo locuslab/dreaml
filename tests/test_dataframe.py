@@ -39,6 +39,19 @@ class TestDataFrame:
         df["row/","col/"] = 2*M
         assert(df["row/","col/"].get_matrix() ==2*M).all()
 
+    def test_sequentialy_matrix_set(self):
+        df = DataFrame()
+        M1 = np.arange(4).reshape(2,2)
+        M2 = np.arange(4).reshape(2,2)*2
+        M3 = np.arange(4).reshape(2,2)*3
+        df["row1/","col1/"] = M1
+        df["row1/","col2/"] = M2
+        df["row2/","col1/"] = M3
+
+        assert (df["row1/","col1/"].r_matrix == M1).all()
+        assert (df["row1/","col2/"].r_matrix == M2).all()
+        assert (df["row2/","col1/"].r_matrix == M3).all()
+
     def test_dataframe_empty(self):
         df = DataFrame()
         df["row/1","col/1"] = 0
