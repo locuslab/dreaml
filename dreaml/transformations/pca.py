@@ -6,8 +6,11 @@ import numpy as np
 import numpy.linalg as la
 _auto_dir = "auto/"
 class PCA(BatchTransform):
-    def func(self,target_df,X_pca_df,X_full_df,num_bases=50):
+    def func(self,target_df,X_pca_df,X_full_df=None,num_bases=50):
         """ Project onto the PCA basis """
+        if X_full_df == None:
+            X_full_df = X_pca_df
+            
         X_mean = np.mean(X_pca_df.r_matrix,axis=0)
 
         # the PCA basis is exposed for the user
