@@ -834,7 +834,8 @@ class DataFrame(object):
     def _get_or_make_keys(self, query, val, axis=0, prefix=""):
         """ Given a query, an index and a value, return the corresponding
         subset of keys for this value if any exist. If none exist, construct
-        a list of keys for the query. """
+        a list of keys for the query. Additionally return True if the keys
+        are known to already exist and were simply fetched. """
         if axis == 0: 
             index = self._row_index
         else:
@@ -843,11 +844,12 @@ class DataFrame(object):
         # If query is a string, append it to the prefix if it is a directory.
         # Otherwise, the query is for exactly one file, so return the key for
         # that file
+        full_prefix = prefix
         if isinstance(query,str):
             if query.endswith("/"):
-                prefix += query
+                full_prefix += query
             else:
-                return [prefix + query]
+                return [prefix + query], False
         
         # If the val is a DataFrame, then we should use exactly the keys present
         # in the DataFrame
@@ -856,20 +858,20 @@ class DataFrame(object):
                 target_index  = val._row_index
             else:
                 target_index = val._col_index
-            return (prefix + k for k in target_index.iterkeys())
+            return (full_prefix + k for k in target_index.iterkeys()), False
 
         # If the val is a single scalar, then return the exact key given by the
         # query if it is a file, otherwise append a 0 to the directory
 
         # If the keys already exist, then reconstruct the whole keys 
         if next(index._get_keys(query),None) != None:
-            return (prefix + k for k in index._get_keys(query))
+            return (prefix + k for k in index._get_keys(query)), True
         # Otherwise, create new keys
         else:
             if is_scalar(val):
-                return [prefix + "0"]
+                return [full_prefix + "0"], False
             elif isinstance(val, np.ndarray):
-                return (prefix + str(k) for k in range(val.shape[axis]))
+                return (full_prefix + str(k) for k in range(val.shape[axis])),False
             else:
                 raise ValueError("Unknown value being set to the DataFrame: " +str(type(val)))
 
@@ -929,14 +931,21 @@ class DataFrame(object):
         row_prefix,col_prefix = self.pwd()
         def rows_iter():
             if rows == None:
-                return self._get_or_make_keys(i, val, axis=0, prefix=row_prefix)
+                return self._get_or_make_keys(i, val, axis=0, prefix=row_prefix)[0]
             else:
-                return (row_prefix + k for k in rows)
+                if isinstance(i,str) and i.endswith("/"):
+                    return (row_prefix + i + k for k in rows)
+                else:
+                    return (row_prefix + k for k in rows)
         def cols_iter():
             if cols == None:
-                return self._get_or_make_keys(j, val, axis=1, prefix=col_prefix)
+                return self._get_or_make_keys(j, val, axis=1, prefix=col_prefix)[0]
             else:
-                return (col_prefix + k for k in cols)
+                if isinstance(j,str) and j.endswith("/"):
+                    return (col_prefix + j + k for k in cols)
+                else:
+                    return (col_prefix + k for k in cols)
+
         len_rows = len_iter(rows_iter())
         len_cols = len_iter(cols_iter())
 
@@ -950,6 +959,10 @@ class DataFrame(object):
                                  + str((len_rows,len_cols)))
         elif isinstance(val, DataFrame):
             M = val.get_matrix()
+            if rows == None:
+                rows = val.rows()
+            if cols == None:
+                cols = val.cols()
         else:
             raise ValueError("Unknown datatype being set to the DataFrame")
         # # First check the cache for a fast set. 
@@ -968,10 +981,20 @@ class DataFrame(object):
         # top_df, not the self dataframe
 
         # "all in or all out" requirement
-        all_rows_exist = all(k in top_df._row_index for k in rows_iter())
-        all_cols_exist = all(k in top_df._col_index for k in cols_iter())
-        no_rows_exist = all(k not in top_df._row_index for k in rows_iter())
-        no_cols_exist = all(k not in top_df._col_index for k in cols_iter())
+        if self.shape[0] == 0:
+            all_rows_exist, no_rows_exist = False, True
+        elif self._get_or_make_keys(i, val, axis=0, prefix=row_prefix)[1]:
+            all_rows_exist, no_rows_exist = True, False
+        else:
+            all_rows_exist = all(k in top_df._row_index for k in rows_iter())
+            no_rows_exist = all(k not in top_df._row_index for k in rows_iter())
+        if self.shape[1] == 0:
+            all_cols_exist, no_cols_exist = False, True
+        elif self._get_or_make_keys(j, val, axis=1, prefix=col_prefix)[1]:
+            all_cols_exist, no_cols_exist = True, False
+        else:
+            all_cols_exist = all(k in top_df._col_index for k in cols_iter())
+            no_cols_exist = all(k not in top_df._col_index for k in cols_iter())
 
         assert(all_rows_exist or no_rows_exist)
         assert(all_cols_exist or no_cols_exist)
