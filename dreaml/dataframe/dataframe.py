@@ -89,13 +89,18 @@ class DataFrame(object):
         if not matrix.shape>0:
             raise ValueError
         if row_labels==None:
-            row_labels = [str(i) for i in range(matrix.shape[0])]
+            row_labels = (str(i) for i in range(matrix.shape[0]))
         if col_labels==None:
-            col_labels = [str(i) for i in range(matrix.shape[1])]
+            col_labels = (str(i) for i in range(matrix.shape[1]))
 
-        if not ((len(row_labels),len(col_labels)) == matrix.shape):
-            raise ValueError("Provided row labels and column labels must match\
-                the dimensions of the given matrix.")
+        if isinstance(row_labels, list):
+            if not (len(row_labels) == matrix.shape[0]):
+                raise ValueError("Provided row labels do not match dimensions of the"
+                                 "given matrix.")
+        if isinstance(col_labels, list):
+            if not (len(col_labels) == matrix.shape[1]):
+                raise ValueError("Provided column labels do not match" 
+                                 "dimensions of the given matrix.")
 
         df = DataFrame()
         row_id = df._add_rows(row_labels)
@@ -813,23 +818,30 @@ class DataFrame(object):
         """ Add col_keys to _col_index for a new partition, update col_counts,
         and return the partition id.
         """
-        col_id = len(self._col_counts)
-        len_col_keys = sum(1 for _ in col_keys)
-        self._col_counts.append(len_col_keys)
-        col_vals = [(col_id, col_idx) for col_idx in range(len_col_keys)]
-        self._col_index[col_keys] = col_vals
-        return col_id
+        return self._add_keys(col_keys,1)
 
     def _add_rows(self, row_keys):
         """ Add row_keys to _row_index for a new partition, update row_counts,
-        and return the partition id. 
+        and return the :partition id. 
         """
-        row_id = len(self._row_counts)
-        len_row_keys = sum(1 for _ in row_keys)
-        self._row_counts.append(len_row_keys)
-        row_vals = [(row_id, row_idx) for row_idx in range(len_row_keys)]
-        self._row_index[row_keys] = row_vals
-        return row_id
+        return self._add_keys(row_keys,0)
+
+    def _add_keys(self, iter_keys, axis = 0):
+        """ Given an iterator over keys, add these keys to the index
+        corresponding to the given axis. """
+        if axis == 0: 
+            counts = self._row_counts
+            index = self._row_index
+        else:
+            counts = self._col_counts
+            index = self._col_index
+        key_id = len(counts)
+        len_keys = 0
+        for k in iter_keys:
+            index[k] = (key_id, len_keys)
+            len_keys += 1
+        counts.append(len_keys)
+        return key_id
 
     def _get_or_make_keys(self, query, val, axis=0, prefix=""):
         """ Given a query, an index and a value, return the corresponding
@@ -1004,14 +1016,14 @@ class DataFrame(object):
         # and cache eviction are done
         # If this is going to change the row/column structure, stop all dependents
         if no_cols_exist: 
-            col_id = top_df._add_cols(list(cols_iter()))
+            col_id = top_df._add_cols(cols_iter())
             col_ids = [col_id]
         else: 
             col_ids = OrderedDict.fromkeys(top_df._col_index[c][0] 
                                            for c in cols_iter()).keys()
         #     col_p_id = self._col_index[cols[0]][0]
         if no_rows_exist:
-            row_id = top_df._add_rows(list(rows_iter()))
+            row_id = top_df._add_rows(rows_iter())
             row_ids = [row_id]
         else: 
             row_ids = OrderedDict.fromkeys(top_df._row_index[r][0] \
